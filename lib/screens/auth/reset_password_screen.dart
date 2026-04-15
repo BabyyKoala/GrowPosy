@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/auth_service.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -8,8 +9,8 @@ class ResetPasswordScreen extends StatefulWidget {
 }
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
-  final _formKey = GlobalKey<FormState>();
   final emailController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   bool isLoading = false;
 
@@ -20,151 +21,109 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   void handleReset() async {
-    if (!_formKey.currentState!.validate()) return;
+    final email = emailController.text.trim();
+
+    // ==========================
+    // 🔥 VALIDASI EMAIL
+    // ==========================
+    if (email.isEmpty) {
+      showMessage("Email wajib diisi");
+      return;
+    }
+
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      showMessage("Format email tidak valid");
+      return;
+    }
 
     setState(() => isLoading = true);
 
-    await Future.delayed(const Duration(seconds: 2)); // simulasi API
+    try {
+      await _authService.resetPassword(email);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Link reset password telah dikirim ke email"),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    Navigator.pop(context); // kembali ke login
+      showSuccessDialog();
+    } catch (e) {
+      showMessage(e.toString());
+    }
 
     setState(() => isLoading = false);
   }
 
+  // ==========================
+  // 🔥 UI FEEDBACK
+  // ==========================
+  void showMessage(String msg) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+  }
+
+  void showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Berhasil"),
+        content: const Text(
+          "Link reset password sudah dikirim ke email.\n\nSilakan cek inbox atau folder spam.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // close dialog
+              Navigator.pop(context); // back ke login
+            },
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================
+  // 🔥 UI
+  // ==========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF4CAF50), Color(0xFF81C784)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      appBar: AppBar(title: const Text("Reset Password")),
+
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const SizedBox(height: 40),
+
+            const Text(
+              "Masukkan email untuk reset password",
+              style: TextStyle(fontSize: 16),
+            ),
+
+            const SizedBox(height: 20),
+
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(
+                labelText: "Email",
+                prefixIcon: Icon(Icons.email),
               ),
             ),
-          ),
 
-          SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  const SizedBox(height: 100),
+            const SizedBox(height: 20),
 
-                  const Icon(Icons.lock_reset, size: 80, color: Colors.white),
-
-                  const SizedBox(height: 10),
-
-                  const Text(
-                    "Reset Password",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  const Text(
-                    "Masukkan email untuk menerima link reset password",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Card Form
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          // Email
-                          TextFormField(
-                            controller: emailController,
-                            decoration: const InputDecoration(
-                              labelText: "Email",
-                              prefixIcon: Icon(Icons.email),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return "Email wajib diisi";
-                              }
-                              if (!value.contains("@")) {
-                                return "Format email tidak valid";
-                              }
-                              return null;
-                            },
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Button Reset
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: isLoading ? null : handleReset,
-                              style: ElevatedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                              ),
-                              child: isLoading
-                                  ? const CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
-                                  : const Text(
-                                      "Kirim Link Reset",
-                                      style: TextStyle(fontSize: 16),
-                                    ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 15),
-
-                          // Back to login
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: const Text("Kembali ke Login"),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-                ],
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : handleReset,
+                child: isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("Kirim Email Reset"),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

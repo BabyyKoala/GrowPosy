@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../services/session_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/firestore_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -9,24 +10,31 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final FirestoreService _firestore = FirestoreService();
+
   @override
   void initState() {
     super.initState();
     checkSession();
   }
 
-  void checkSession() async {
-    await Future.delayed(const Duration(seconds: 2));
+  Future<void> checkSession() async {
+    await Future.delayed(const Duration(seconds: 3));
 
-    final isFirstTime = await SessionService.isFirstTime();
-    final isLoggedIn = await SessionService.isLoggedIn();
-    final role = await SessionService.getRole();
+    final user = FirebaseAuth.instance.currentUser;
 
     if (!mounted) return;
 
-    if (isFirstTime) {
-      Navigator.pushReplacementNamed(context, '/onboarding');
-    } else if (isLoggedIn) {
+    try {
+      if (user == null) {
+        Navigator.pushReplacementNamed(context, '/');
+        return;
+      }
+
+      final role = await _firestore.getUserRole();
+
+      if (!mounted) return;
+
       if (role == 'ibu') {
         Navigator.pushReplacementNamed(context, '/home_ibu');
       } else if (role == 'kader') {
@@ -34,7 +42,8 @@ class _SplashScreenState extends State<SplashScreen> {
       } else {
         Navigator.pushReplacementNamed(context, '/role');
       }
-    } else {
+    } catch (e) {
+      // 🔥 fallback kalau firestore error
       Navigator.pushReplacementNamed(context, '/');
     }
   }
@@ -62,6 +71,8 @@ class _SplashScreenState extends State<SplashScreen> {
                 color: Colors.white,
               ),
             ),
+            SizedBox(height: 30),
+            CircularProgressIndicator(color: Colors.white),
           ],
         ),
       ),

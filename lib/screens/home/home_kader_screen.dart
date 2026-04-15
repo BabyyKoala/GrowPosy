@@ -7,7 +7,7 @@ class HomeKaderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
+      backgroundColor: const Color.fromARGB(255, 83, 97, 126),
 
       body: SafeArea(
         child: SingleChildScrollView(

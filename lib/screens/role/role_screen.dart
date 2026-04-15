@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../services/session_service.dart';
+import '../../services/firestore_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RoleScreen extends StatefulWidget {
   const RoleScreen({super.key});
@@ -9,190 +10,108 @@ class RoleScreen extends StatefulWidget {
 }
 
 class _RoleScreenState extends State<RoleScreen> {
-  String? selectedRole;
+  final FirestoreService firestore = FirestoreService();
 
-  void selectRole(String role) {
-    setState(() {
-      selectedRole = role;
-    });
-  }
+  final codeController = TextEditingController();
 
-  void continueRole() async {
-    if (selectedRole == null) return;
+  bool isLoading = false;
 
-    await SessionService.setRole(selectedRole!);
+  // 🔥 PILIH IBU
+  Future<void> selectIbu() async {
+    setState(() => isLoading = true);
+
+    await firestore.setUserRole('ibu');
 
     if (!mounted) return;
 
-    if (selectedRole == 'ibu') {
-      Navigator.pushReplacementNamed(context, '/home_ibu');
-    } else {
-      Navigator.pushReplacementNamed(context, '/home_kader');
+    Navigator.pushReplacementNamed(context, '/home_ibu');
+  }
+
+  // 🔥 PILIH KADER (PAKAI KODE)
+  Future<void> selectKader() async {
+    final code = codeController.text.trim();
+
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Kode wajib diisi")));
+      return;
     }
+
+    setState(() => isLoading = true);
+
+    final isValid = await firestore.verifyInviteCode(code);
+
+    if (!isValid) {
+      setState(() => isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Kode tidak valid atau sudah digunakan"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    await firestore.setUserRole('kader');
+    await firestore.useInviteCode(code, uid);
+
+    if (!mounted) return;
+
+    Navigator.pushReplacementNamed(context, '/home_kader');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF4CAF50), Color(0xFF81C784)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      appBar: AppBar(title: const Text("Pilih Role")),
 
-        child: SafeArea(
-          child: Column(
-            children: [
-              const SizedBox(height: 40),
-
-              // 🔥 HEADER
-              const Text(
-                "Pilih Peran Anda",
-                style: TextStyle(
-                  fontSize: 24,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              const Text(
-                "Agar pengalaman lebih sesuai",
-                style: TextStyle(color: Colors.white70),
-              ),
-
-              const SizedBox(height: 40),
-
-              // 🔥 CARD CONTAINER
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      _roleCard(
-                        title: "Ibu / Orang Tua",
-                        desc: "Pantau tumbuh kembang anak",
-                        icon: Icons.child_care,
-                        value: "ibu",
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      _roleCard(
-                        title: "Kader Posyandu",
-                        desc: "Kelola data dan kegiatan",
-                        icon: Icons.local_hospital,
-                        value: "kader",
-                      ),
-
-                      const Spacer(),
-
-                      // 🔥 BUTTON LANJUT
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: selectedRole == null ? null : continueRole,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                          ),
-                          child: const Text(
-                            "Lanjutkan",
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 🔥 ROLE CARD
-  Widget _roleCard({
-    required String title,
-    required String desc,
-    required IconData icon,
-    required String value,
-  }) {
-    final isSelected = selectedRole == value;
-
-    return GestureDetector(
-      onTap: () => selectRole(value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
+      body: Padding(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.green.shade50 : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Colors.green : Colors.grey.shade300,
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(10),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-
-        child: Row(
+        child: Column(
           children: [
-            // ICON
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withAlpha(30),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: Colors.green),
-            ),
+            const Text("Pilih peran Anda", style: TextStyle(fontSize: 18)),
 
-            const SizedBox(width: 15),
+            const SizedBox(height: 30),
 
-            // TEXT
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(desc, style: const TextStyle(color: Colors.grey)),
-                ],
+            // 🔥 IBU BUTTON
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : selectIbu,
+                child: const Text("Masuk sebagai Ibu"),
               ),
             ),
 
-            // CHECK
-            if (isSelected) const Icon(Icons.check_circle, color: Colors.green),
+            const SizedBox(height: 30),
+
+            const Divider(),
+
+            const SizedBox(height: 20),
+
+            // 🔥 INPUT KODE KADER
+            TextField(
+              controller: codeController,
+              decoration: const InputDecoration(
+                labelText: "Kode Kader",
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : selectKader,
+                child: isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("Verifikasi sebagai Kader"),
+              ),
+            ),
           ],
         ),
       ),

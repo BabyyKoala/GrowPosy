@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "948105494386",
+    "project_id": "growposy4",
+    "storage_bucket": "growposy4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:948105494386:android:c9eb63631f7577a1c1e7eb",
+        "android_client_info": {
+          "package_name": "com.example.growposy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "948105494386-8usv2oh04tancvjeglf3gj89aa27sjgm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.growposy",
+            "certificate_hash": "4c4feded088a25c7999de7de9a8597fff7025a12"
+          }
+        },
+        {
+          "client_id": "948105494386-727ji462l50vic7ktt60r976gnef6ahf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEVJSK9_t_aUwpx-ra6PnsmtOZD8wgtNU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "948105494386-727ji462l50vic7ktt60r976gnef6ahf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
