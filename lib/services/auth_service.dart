@@ -140,4 +140,37 @@ class AuthService {
   Future<String?> getRole() async {
     return await _firestore.getUserRole();
   }
+// ==========================
+  // 🔥 VERIFIKASI KODE UNDANGAN (UPGRADE)
+  // ==========================
+  Future<bool> verifyInviteCode(String rawCode) async {
+    try {
+      final cleanCode = rawCode.trim().toUpperCase();
+      print("Kirim kode ke Firebase: '$cleanCode'"); 
+
+      final isValid = await _firestore.verifyInviteCode(cleanCode);
+      print("Hasil validasi Firebase: $isValid");
+
+      if (isValid) {
+        final uid = _auth.currentUser?.uid;
+        
+        // JIKA UID ADA, UPDATE DATABASE
+        if (uid != null) {
+          await _firestore.useInviteCode(cleanCode, uid);
+          print("Berhasil update status kode untuk UID: $uid");
+        } else {
+          // JIKA UID TIDAK ADA, TETAP BERIKAN TRUE (TAPI KASIH PERINGATAN)
+          print("PERINGATAN: Kode valid, tapi user belum login (UID null)");
+        }
+        
+        return true; // Tetap return true karena kodenya memang valid
+      }
+      
+      return false;
+    } catch (e) {
+      print("ERROR VERIFY CODE: $e");
+      return false;
+    }
+  }
+
 }

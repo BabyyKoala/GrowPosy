@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "948105494386-88gbe108dgnnmf40dlmevj4ef9u0fbgd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.growposy",
+            "certificate_hash": "f878e6c0eb4570ab883b691970bdcb8569b67275"
+          }
+        },
+        {
           "client_id": "948105494386-8usv2oh04tancvjeglf3gj89aa27sjgm.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

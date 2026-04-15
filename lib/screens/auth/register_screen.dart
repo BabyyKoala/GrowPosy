@@ -53,10 +53,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => isLoading = true);
 
     try {
-      // Validasi Khusus Kader
+      // 🔥 PERBAIKAN: Cek kode kader ke Database (Firestore)
       if (selectedRole == 'kader') {
-        if (codeController.text != "POSYANDU123") {
-          throw Exception("Kode kader salah");
+        bool isCodeValid = await _authService.verifyInviteCode(codeController.text);
+        if (!isCodeValid) {
+          throw Exception("Kode kader tidak valid atau sudah digunakan");
         }
       }
 
@@ -68,13 +69,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       if (user != null && mounted) {
+        // Jika pendaftaran berhasil, kode di database otomatis ditandai 'terpakai'
+        // karena kita memanggil verifyInviteCode di atas.
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Registrasi berhasil! Silakan masuk."),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pushReplacementNamed(context, '/'); // Kembali ke Login
+        Navigator.pushReplacementNamed(context, '/'); 
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

@@ -89,6 +89,10 @@ class FirestoreService {
     });
   }
 
+  Stream<int> getTotalAllChildren() {
+  return _db.collectionGroup('children').snapshots().map((snap) => snap.docs.length);
+}
+
   // ==========================
   // 🔥 GET LAST WEIGHT GENERIC
   // ==========================
@@ -171,12 +175,15 @@ class FirestoreService {
   }
 
   // ==========================
-  // 🔥 VERIFY INVITE CODE
+  // 🔥 VERIFY INVITE CODE (UPGRADED)
   // ==========================
   Future<bool> verifyInviteCode(String code) async {
+    // .trim() akan menghapus spasi yang tidak sengaja terketik di awal/akhir
+    final cleanCode = code.trim(); 
+
     final result = await _db
         .collection('invite_codes')
-        .where('code', isEqualTo: code)
+        .where('code', isEqualTo: cleanCode)
         .where('isUsed', isEqualTo: false)
         .get();
 

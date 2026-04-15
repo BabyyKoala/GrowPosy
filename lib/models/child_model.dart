@@ -1,26 +1,8 @@
-class GrowthData {
-  final double weight;
-  final double height;
-
-  GrowthData({required this.weight, required this.height});
-
-  factory GrowthData.fromMap(Map<String, dynamic> map) {
-    return GrowthData(
-      weight: (map['weight'] ?? 0).toDouble(),
-      height: (map['height'] ?? 0).toDouble(),
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {'weight': weight, 'height': height};
-  }
-}
-
 class ChildModel {
   final String id;
   final String name;
   final int age;
-  final String gender;
+  final String gender; // 'L' atau 'P'
 
   ChildModel({
     required this.id,
@@ -32,9 +14,9 @@ class ChildModel {
   factory ChildModel.fromMap(String id, Map<String, dynamic> data) {
     return ChildModel(
       id: id,
-      name: data['name'] ?? '',
+      name: data['name'] ?? 'Tanpa Nama',
       age: data['age'] ?? 0,
-      gender: data['gender'] ?? '',
+      gender: data['gender'] ?? 'L',
     );
   }
 }
