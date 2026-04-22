@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 import '../../theme/app_color.dart';
 import '../../theme/app_text_style.dart';
 
+// 🔥 PERBAIKAN 1: Import layar detail artikel agar bisa diakses
+// Pastikan path import ini sesuai dengan struktur foldermu.
+// Jika kedua file ini berada dalam satu folder, cukup gunakan:
+// import 'article_detail_screen.dart';
+import 'article_detail_screen.dart';
+
 class EdukasiScreen extends StatefulWidget {
   const EdukasiScreen({super.key});
 
@@ -16,7 +22,7 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
   String searchQuery = '';
 
   // 🔥 Mock Data (Data Dummy) Artikel
-  // Nantinya data ini bisa kamu pindahkan ke Firestore jika ingin artikelnya dinamis
+  // Menambahkan field 'content' agar setiap artikel punya isi yang berbeda
   final List<Map<String, dynamic>> articles = [
     {
       'title': 'Menu MPASI Sehat 6-9 Bulan Tanpa Ribet',
@@ -24,6 +30,8 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
       'time': '5 min read',
       'icon': Icons.restaurant,
       'color': Colors.orange,
+      'content':
+          'Memasuki usia 6 bulan, kebutuhan gizi bayi mulai meningkat dan ASI saja tidak lagi cukup. Memulai MPASI (Makanan Pendamping ASI) adalah langkah penting.\n\nKunci utamanya adalah memberikan makanan yang kaya akan zat besi dan mudah dicerna. Contoh menu tanpa ribet: Bubur halus hati ayam dengan tambahan sedikit margarin/minyak kelapa, atau pure kentang campur daging sapi giling halus.\n\nPastikan tekstur makanan disesuaikan dengan kemampuan mengunyah bayi Anda. Mulailah dengan tekstur lumat (puree) dan perlahan naik ke tekstur cincang halus.',
     },
     {
       'title': 'Jadwal Imunisasi Dasar Lengkap Kemenkes',
@@ -31,6 +39,8 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
       'time': '4 min read',
       'icon': Icons.vaccines,
       'color': Colors.blue,
+      'content':
+          'Imunisasi adalah perlindungan terbaik agar balita terhindar dari penyakit berbahaya. Berikut adalah jadwal standar imunisasi dasar menurut Kementerian Kesehatan RI:\n\n- Umur 0 bulan: Hepatitis B0\n- Umur 1 bulan: BCG, Polio 1\n- Umur 2 bulan: DPT-HB-Hib 1, Polio 2, Rotavirus\n- Umur 3 bulan: DPT-HB-Hib 2, Polio 3, Rotavirus\n- Umur 4 bulan: DPT-HB-Hib 3, Polio 4, IPV\n- Umur 9 bulan: Campak/MR\n\nBawalah anak ke Posyandu atau Puskesmas secara rutin agar tidak tertinggal jadwal imunisasinya.',
     },
     {
       'title': 'Tips Menstimulasi Motorik Kasar Bayi',
@@ -38,6 +48,8 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
       'time': '6 min read',
       'icon': Icons.toys,
       'color': Colors.purple,
+      'content':
+          'Perkembangan motorik kasar mencakup kemampuan duduk, merangkak, berdiri, dan berjalan. Stimulasi yang tepat dari orang tua sangat dibutuhkan.\n\n1. Tummy Time: Lakukan sejak dini untuk memperkuat otot leher dan punggung bayi.\n2. Pancing dengan Mainan: Letakkan mainan favorit sedikit di luar jangkauan untuk merangsang bayi merangkak maju.\n3. Pegangan yang Aman: Sediakan area yang aman bagi bayi untuk belajar merambat atau berdiri berpegangan pada furnitur.\n\nSetiap anak berkembang dengan kecepatan berbeda, jadi jangan memaksakan jika bayi belum siap.',
     },
     {
       'title': 'Mendeteksi Gejala Awal Stunting pada Anak',
@@ -45,6 +57,8 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
       'time': '7 min read',
       'icon': Icons.warning_amber_rounded,
       'color': AppColor.errorRed,
+      'content':
+          'Stunting bukan sekadar tubuh pendek, melainkan kondisi gagal tumbuh akibat kurang gizi kronis di 1000 Hari Pertama Kehidupan. Kondisi ini juga memengaruhi perkembangan kecerdasan otak anak.\n\nGejala Awal yang Perlu Diwaspadai:\n1. Pertumbuhan gigi terlambat.\n2. Performa atau memori belajar yang buruk saat masuk usia pra-sekolah.\n3. Anak menjadi lebih pendiam dan tidak banyak melakukan *eye contact* di usia 8-10 bulan.\n4. Pertumbuhan tinggi badan yang melambat (berada di bawah garis merah pada kurva KMS).\n\nJika menemui tanda tersebut, segera intervensi dengan memperbaiki nutrisi MPASI dan berkonsultasi ke ahlinya.',
     },
     {
       'title': 'Resep Camilan Tinggi Kalori Penambah Berat Badan',
@@ -52,6 +66,8 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
       'time': '4 min read',
       'icon': Icons.ramen_dining,
       'color': Colors.orange,
+      'content':
+          'Banyak ibu khawatir ketika berat badan si kecil susah naik. Solusinya bukan memberikan camilan manis berlebihan, tetapi camilan sehat padat kalori (Double Protein/Karbo).\n\nCoba resep ini: Perkedel Kentang Keju Telur Puyuh.\nKukus kentang hingga empuk, haluskan. Campur dengan telur puyuh rebus yang sudah dilumatkan, sedikit daging ayam cincang, dan parutan keju. Bentuk bulat-bulat lalu goreng dengan mentega.\n\nCamilan ini tidak hanya lezat, tetapi mengandung karbohidrat, protein hewani, dan lemak sehat yang efektif mendongkrak berat badan balita secara aman.',
     },
   ];
 
@@ -198,7 +214,10 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
                     itemCount: filteredArticles.length,
                     itemBuilder: (context, index) {
                       final article = filteredArticles[index];
-                      return _buildArticleCard(article);
+                      return _buildArticleCard(
+                        context,
+                        article,
+                      ); // Melempar context
                     },
                   ),
           ),
@@ -211,7 +230,7 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
   // WIDGET COMPONENTS
   // ==========================
 
-  Widget _buildArticleCard(Map<String, dynamic> article) {
+  Widget _buildArticleCard(BuildContext context, Map<String, dynamic> article) {
     final Color color = article['color'];
 
     return Container(
@@ -233,7 +252,21 @@ class _EdukasiScreenState extends State<EdukasiScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: () {
-            // TODO: Navigasi ke halaman baca artikel detail
+            // 🔥 PERBAIKAN 2: Navigasi ke halaman baca artikel detail
+            // Mengirimkan data artikel spesifik ke ArticleDetailScreen
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ArticleDetailScreen(
+                  title: article['title'],
+                  category: article['category'],
+                  time: article['time'],
+                  content: article['content'],
+                  icon: article['icon'],
+                  color: article['color'],
+                ),
+              ),
+            );
           },
           child: Padding(
             padding: const EdgeInsets.all(16.0),

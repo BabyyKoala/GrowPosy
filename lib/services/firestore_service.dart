@@ -160,38 +160,54 @@ class FirestoreService {
     return (snapshot.docs.first.data()['weight'] as num).toDouble();
   }
 
-  // ==========================
-  // 🔥 INVITE CODE SYSTEM (KADER)
-  // ==========================
+  // ==================================================
+  // 🔥 INVITE CODE SYSTEM (KADER) - MULTI-USE VERSION
+  // ==================================================
+
   Future<bool> verifyInviteCode(String code) async {
     final cleanCode = code.trim().toUpperCase();
-    final result = await _db
-        .collection('invite_codes')
-        .where('code', isEqualTo: cleanCode)
-        .where('isUsed', isEqualTo: false)
-        .get();
-    return result.docs.isNotEmpty;
+    try {
+      // Hanya mengecek apakah kode tersebut ADA di database
+      // Tidak lagi mengecek status isUsed
+      final result = await _db
+          .collection('invite_codes')
+          .where('code', isEqualTo: cleanCode)
+          .limit(1) // Optimasi performa: batasi pencarian 1 dokumen saja
+          .get();
+
+      return result.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint("Error saat memverifikasi kode: $e");
+      return false;
+    }
   }
 
   Future<void> useInviteCode(String code, String uid) async {
     final cleanCode = code.trim().toUpperCase();
-    final query = await _db
-        .collection('invite_codes')
-        .where('code', isEqualTo: cleanCode)
-        .get();
+    try {
+      final query = await _db
+          .collection('invite_codes')
+          .where('code', isEqualTo: cleanCode)
+          .limit(1)
+          .get();
 
-    if (query.docs.isNotEmpty) {
-      final docId = query.docs.first.id;
-      await _db.collection('invite_codes').doc(docId).update({
-        'isUsed': true,
-        'usedBy': uid,
-        'usedAt': FieldValue.serverTimestamp(),
-      });
+      if (query.docs.isNotEmpty) {
+        final docId = query.docs.first.id;
+
+        // Menggunakan FieldValue.arrayUnion untuk mengumpulkan daftar UID
+        // Ini tidak akan menimpa UID sebelumnya, melainkan menambahkannya ke dalam daftar
+        await _db.collection('invite_codes').doc(docId).update({
+          'usedBy': FieldValue.arrayUnion([uid]),
+          'lastUsedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      throw Exception("Gagal mencatat penggunaan kode: $e");
     }
   }
 
   // ==========================================
-  // 📅 MANAJEMEN JADWAL POSYANDU (PERBAIKAN BARU)
+  // 📅 MANAJEMEN JADWAL POSYANDU
   // ==========================================
   Future<void> addJadwal(Map<String, dynamic> data) async {
     await _db.collection('jadwal').add({

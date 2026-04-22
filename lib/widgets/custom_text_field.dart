@@ -10,6 +10,9 @@ class CustomTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final Widget? suffixIcon;
 
+  // 🔥 1. Tambahkan variabel untuk TextCapitalization
+  final TextCapitalization textCapitalization;
+
   const CustomTextField({
     super.key,
     required this.hintText,
@@ -19,6 +22,8 @@ class CustomTextField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.suffixIcon,
+    // 🔥 2. Beri nilai default 'none' agar tidak merusak form lama (seperti email/password)
+    this.textCapitalization = TextCapitalization.none,
   });
 
   @override
@@ -27,6 +32,9 @@ class CustomTextField extends StatelessWidget {
       controller: controller,
       obscureText: isPassword,
       keyboardType: keyboardType,
+      // 🔥 3. Pasang variabelnya di sini agar efeknya aktif
+      textCapitalization: textCapitalization,
+
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(color: AppColor.textGrey),

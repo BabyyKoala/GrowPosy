@@ -30,8 +30,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   // ==========================
   // ⚙️ LOGIKA VERIFIKASI KODE
   // ==========================
-  void onVerifyPressed() async {
-    final code = codeController.text.trim();
+  Future<void> onVerifyPressed() async {
+    // Otomatis ubah ke huruf besar semua agar konsisten dengan database
+    final code = codeController.text.trim().toUpperCase();
 
     if (code.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -47,22 +48,23 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
 
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null)
+      if (uid == null) {
         throw Exception("Sesi tidak valid, silakan login ulang.");
+      }
 
-      // 1. Cek ke validan kode di Firestore
+      // 1. Cek kevalidan kode di Firestore
       bool isValid = await _firestore.verifyInviteCode(code);
 
       if (!isValid) {
-        throw Exception(
-          "Kode tidak valid atau sudah digunakan oleh Kader lain.",
-        );
+        throw Exception("Kode tidak valid. Periksa kembali kode Anda.");
       }
 
-      // 2. Tandai kode terpakai dan set role Kader ke akun ini
+      // 2. Catat penggunaan kode dan set role Kader ke akun ini
+      // Asumsi: useInviteCode hanya mencatat (log), BUKAN menghanguskan kode
       await _firestore.useInviteCode(code, uid);
       await _firestore.setUserRole('kader');
 
+      // 🔥 Mencegah crash jika layar sudah di-pop/ditutup sebelum await selesai
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -75,16 +77,19 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       // 3. Arahkan ke Dashboard Kader
       Navigator.pushReplacementNamed(context, '/home_kader');
     } catch (e) {
+      // 🔥 Pastikan layar masih ada sebelum memunculkan snackbar error
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll("Exception: ", "")),
           backgroundColor: AppColor.errorRed,
         ),
       );
-    }
-
-    if (mounted) {
-      setState(() => isLoading = false);
+    } finally {
+      // Pastikan state loading dimatikan, apapun hasil dari try-catch
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -140,6 +145,8 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                 controller: codeController,
                 hintText: "Contoh: KADER-SIAGA-2026",
                 prefixIcon: Icons.vpn_key_outlined,
+                // Menambahkan kapitalisasi otomatis pada keyboard
+                textCapitalization: TextCapitalization.characters,
               ),
 
               const SizedBox(height: 40),

@@ -718,11 +718,21 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   Widget _buildMiniArticleCard(String category, String title, Color color) {
     return GestureDetector(
       onTap: () {
+        // 🔥 PERBAIKAN: Menambahkan parameter yang dibutuhkan ArticleDetailScreen
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                ArticleDetailScreen(title: title, category: category),
+            builder: (context) => ArticleDetailScreen(
+              title: title,
+              category: category,
+              color: color,
+              // Karena ini Mini Card statis, kita berikan data konten dummy default
+              // Kamu bisa menyesuaikan teks ini jika mau
+              time: "5 min read",
+              icon: Icons.menu_book_rounded,
+              content:
+                  "Ini adalah artikel singkat mengenai $category. \n\nMembaca informasi seputar $title sangat penting untuk menunjang tumbuh kembang anak Anda agar tetap sehat dan ceria. Jangan ragu untuk selalu berkonsultasi dengan kader posyandu atau bidan terdekat untuk informasi lebih lanjut.",
+            ),
           ),
         );
       },

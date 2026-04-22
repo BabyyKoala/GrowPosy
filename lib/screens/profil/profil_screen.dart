@@ -42,8 +42,22 @@ class _ProfilScreenState extends State<ProfilScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              // 1. Tutup dialog dulu
+              Navigator.pop(context);
+
+              // 2. Tampilkan loading sebentar (opsional tapi bagus untuk UX)
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Sedang mengeluarkan akun..."),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+
+              // 3. Proses Logout
               await AuthService().logout();
               if (!mounted) return;
+
+              // 4. Arahkan ke halaman utama/login
               Navigator.of(
                 context,
               ).pushNamedAndRemoveUntil('/', (route) => false);
@@ -68,8 +82,29 @@ class _ProfilScreenState extends State<ProfilScreen> {
     );
   }
 
+  // ==========================================
+  // FEEDBACK UNTUK MENU YANG BELUM ADA HALAMANNYA
+  // ==========================================
+  void _handleMenuClick(String menuName) {
+    // TODO: Ganti Navigator.push jika halaman sudah kamu buat.
+    // Sementara ini, kita beri feedback Snackbar agar tombol tidak terkesan "mati"
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Membuka menu $menuName..."),
+        backgroundColor: AppColor.primaryGreen,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // 🔥 Mengambil nama, jika kosong fallback ke "Pengguna GrowPosy"
+    final String displayName = user?.displayName ?? "Pengguna GrowPosy";
+    final String displayEmail = user?.email ?? "Email tidak tersedia";
+
     return Scaffold(
       backgroundColor: AppColor.bgWhite,
       body: SafeArea(
@@ -79,12 +114,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
             left: 24,
             right: 24,
             top: 20,
-            bottom: 120,
-          ), // Padding bawah untuk Floating Navbar
+            bottom: 120, // Padding bawah untuk Floating Navbar
+          ),
           child: Column(
             children: [
-              // 🔥 AVATAR & INFO AKUN
               const SizedBox(height: 20),
+
+              // 🔥 AVATAR & INFO AKUN
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
@@ -97,35 +133,45 @@ class _ProfilScreenState extends State<ProfilScreen> {
                         width: 2,
                       ),
                     ),
-                    child: const CircleAvatar(
+                    child: CircleAvatar(
                       radius: 50,
-                      backgroundColor: AppColor.borderGrey,
-                      backgroundImage: AssetImage(
-                        'assets/images/avatar_ibu.png',
-                      ), // Pastikan file ini ada, atau ganti dengan icon
+                      backgroundColor: AppColor.primaryGreen.withOpacity(0.1),
+                      // 🔥 Menggunakan Icon sebagai fallback yang aman agar aplikasi tidak crash
+                      // jika file 'assets/images/avatar_ibu.png' belum ada di folder.
+                      child: const Icon(
+                        Icons.person_rounded,
+                        size: 50,
+                        color: AppColor.primaryGreen,
+                      ),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: AppColor.primaryGreen,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.edit,
-                      color: Colors.white,
-                      size: 16,
+                  GestureDetector(
+                    onTap: () => _handleMenuClick("Ubah Foto Profil"),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColor.primaryGreen,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              const Text("Akun Pengguna", style: AppTextStyle.heading1),
-              const SizedBox(height: 4),
+
+              // 🔥 NAMA & EMAIL PENGGUNA
               Text(
-                user?.email ?? "Email tidak tersedia",
-                style: AppTextStyle.bodyText,
+                displayName,
+                style: AppTextStyle.heading1.copyWith(fontSize: 20),
               ),
+              const SizedBox(height: 4),
+              Text(displayEmail, style: AppTextStyle.bodyText),
 
               const SizedBox(height: 40),
 
@@ -133,22 +179,22 @@ class _ProfilScreenState extends State<ProfilScreen> {
               _buildProfileMenu(
                 Icons.person_outline_rounded,
                 "Informasi Pribadi",
-                () {},
+                () => _handleMenuClick("Informasi Pribadi"),
               ),
               _buildProfileMenu(
                 Icons.notifications_active_outlined,
                 "Pengaturan Notifikasi",
-                () {},
+                () => _handleMenuClick("Pengaturan Notifikasi"),
               ),
               _buildProfileMenu(
                 Icons.security_outlined,
                 "Keamanan & Kata Sandi",
-                () {},
+                () => _handleMenuClick("Keamanan & Kata Sandi"),
               ),
               _buildProfileMenu(
                 Icons.help_outline_rounded,
                 "Pusat Bantuan",
-                () {},
+                () => _handleMenuClick("Pusat Bantuan"),
               ),
 
               const Padding(
@@ -196,6 +242,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColor.borderGrey),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

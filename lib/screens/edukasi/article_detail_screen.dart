@@ -8,29 +8,27 @@ class ArticleDetailScreen extends StatelessWidget {
   final String title;
   final String category;
 
+  // 🔥 PERBAIKAN 3: Menambahkan parameter baru untuk menangkap data dari layar sebelumnya
+  final String time;
+  final String content;
+  final IconData icon;
+  final Color color;
+
   const ArticleDetailScreen({
     super.key,
     required this.title,
     required this.category,
+    required this.time,
+    required this.content,
+    required this.icon,
+    required this.color,
   });
-
-  // Fungsi pembantu untuk menentukan warna badge berdasarkan kategori
-  Color _getCategoryColor(String cat) {
-    switch (cat.toLowerCase()) {
-      case 'nutrisi':
-        return Colors.orange;
-      case 'kesehatan':
-        return Colors.blue;
-      case 'tumbuh':
-        return AppColor.errorRed;
-      default:
-        return AppColor.primaryGreen;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final catColor = _getCategoryColor(category);
+    // Kita langsung menggunakan 'color' yang dilempar dari layar sebelumnya
+    // sehingga fungsi _getCategoryColor() bisa dihapus agar kode lebih ringkas
+    final catColor = color;
 
     return Scaffold(
       backgroundColor: AppColor.bgWhite,
@@ -69,7 +67,7 @@ class ArticleDetailScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔥 GAMBAR HEADER ARTIKEL (Placeholder Ilustrasi)
+              // 🔥 GAMBAR HEADER ARTIKEL (Menggunakan icon dinamis)
               Container(
                 width: double.infinity,
                 height: 220,
@@ -83,7 +81,7 @@ class ArticleDetailScreen extends StatelessWidget {
                 ),
                 child: Center(
                   child: Icon(
-                    Icons.menu_book_rounded,
+                    icon, // Berubah sesuai artikel yang diklik
                     size: 80,
                     color: catColor.withOpacity(0.5),
                   ),
@@ -117,9 +115,9 @@ class ArticleDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    // 🔥 JUDUL ARTIKEL
+                    // 🔥 JUDUL ARTIKEL DINAMIS
                     Text(
-                      title,
+                      title, // Berubah sesuai artikel yang diklik
                       style: AppTextStyle.heading1.copyWith(
                         fontSize: 26,
                         height: 1.3,
@@ -127,7 +125,7 @@ class ArticleDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // 🔥 INFO PENULIS & WAKTU BACA
+                    // 🔥 INFO PENULIS & WAKTU BACA DINAMIS
                     Row(
                       children: [
                         const CircleAvatar(
@@ -171,16 +169,16 @@ class ArticleDetailScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
-                            children: const [
-                              Icon(
+                            children: [
+                              const Icon(
                                 Icons.access_time_rounded,
                                 size: 14,
                                 color: AppColor.textGrey,
                               ),
-                              SizedBox(width: 4),
+                              const SizedBox(width: 4),
                               Text(
-                                "5 Menit",
-                                style: TextStyle(
+                                time, // Menampilkan waktu baca (misal: "5 min read")
+                                style: const TextStyle(
                                   color: AppColor.textGrey,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
@@ -197,19 +195,12 @@ class ArticleDetailScreen extends StatelessWidget {
                       child: Divider(color: AppColor.borderGrey),
                     ),
 
-                    // 🔥 ISI KONTEN (Tipografi diatur agar nyaman dibaca)
-                    const Text(
-                      "Masa balita adalah masa keemasan (golden age) bagi pertumbuhan dan perkembangan anak. Pada masa ini, otak anak berkembang sangat pesat, sehingga asupan nutrisi yang tepat dan stimulasi yang sesuai usia sangat krusial.\n\n"
-                      "Langkah-Langkah Penting yang Harus Diperhatikan:\n\n"
-                      "1. Berikan ASI Eksklusif\nBerikan ASI secara eksklusif hingga bayi berusia 6 bulan. Setelah itu, perlahan perkenalkan Makanan Pendamping ASI (MPASI) yang kaya akan zat besi, protein hewani, dan vitamin.\n\n"
-                      "2. Pantau Grafik KMS Secara Berkala\nJangan pernah ragu untuk datang ke Posyandu setiap bulan. Penimbangan berat badan dan pengukuran tinggi badan sangat penting untuk memastikan anak Anda tetap berada di zona hijau KMS.\n\n"
-                      "3. Lengkapi Imunisasi Dasar\nImunisasi adalah perisai pelindung anak dari penyakit berbahaya. Pastikan anak mendapatkan vaksin dasar seperti Hepatitis, BCG, DPT, Polio, dan Campak sesuai jadwal usia mereka.\n\n"
-                      "4. Stimulasi Motorik dan Kognitif\nAjak anak bermain, berbicara, dan membacakan buku cerita. Interaksi ini sangat baik untuk melatih kemampuan motorik kasar, motorik halus, dan kecerdasan bahasa.\n\n"
-                      "Kesimpulan\nJika dalam pemantauan KMS kurva anak menunjukkan tren mendatar atau menurun, segera konsultasikan masalah ini kepada Kader Posyandu atau Bidan desa agar dapat ditindaklanjuti lebih awal.",
-                      style: TextStyle(
+                    // 🔥 ISI KONTEN DINAMIS
+                    Text(
+                      content, // Mengambil teks yang spesifik dari masing-masing artikel
+                      style: const TextStyle(
                         fontSize: 16,
-                        height:
-                            1.8, // Line height sangat penting untuk artikel panjang
+                        height: 1.8,
                         color: AppColor.textBlack,
                         letterSpacing: 0.3,
                       ),
