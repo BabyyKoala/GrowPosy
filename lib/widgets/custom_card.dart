@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+// 🔥 Import Sistem Tema
+import '../theme/app_color.dart';
+
 class CustomCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -18,41 +21,45 @@ class CustomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    // Jika warna tidak diisi, gunakan hijau utama sebagai default
+    final activeColor = color ?? AppColor.primaryGreen;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Ink(
+        border: Border.all(color: AppColor.borderGrey),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
             child: Row(
               children: [
-                // ICON
+                // 🔥 ICON DENGAN BACKGROUND TRANSPARAN
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: (color ?? Colors.green).withOpacity(0.1),
+                    color: activeColor.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(icon, color: color ?? Colors.green),
+                  child: Icon(icon, color: activeColor, size: 28),
                 ),
 
                 const SizedBox(width: 16),
 
-                // TEXT
+                // 🔥 TEKS
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,18 +69,26 @@ class CustomCard extends StatelessWidget {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: AppColor.textBlack,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: const TextStyle(color: Colors.grey),
+                        style: const TextStyle(
+                          color: AppColor.textGrey,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
                 ),
 
-                const Icon(Icons.arrow_forward_ios, size: 16),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: AppColor.textGrey,
+                ),
               ],
             ),
           ),

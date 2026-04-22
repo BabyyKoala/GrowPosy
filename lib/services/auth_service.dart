@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'firestore_service.dart';
 
@@ -8,34 +9,63 @@ class AuthService {
   final FirestoreService _firestore = FirestoreService();
 
   // ==========================
-  // 🔥 REGISTER EMAIL
+  // 🔥 REGISTER EMAIL (DIPERBAIKI)
   // ==========================
   Future<User?> register({
     required String email,
     required String password,
     required String role,
-    String name = '',
+    required String name,
+    required String phone, // Parameter baru
+    String? address, // Parameter baru
+    int? childrenCount, // Parameter baru
+    String? posyanduName, // Parameter baru
+    String? inviteCode,
   }) async {
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
+      UserCredential cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-
-      final user = credential.user;
+      User? user = cred.user;
 
       if (user != null) {
-        await _firestore.createUser(
-          uid: user.uid,
-          email: email,
-          role: role,
-          name: name,
-        );
-      }
+        // Simpan semua profil lengkap ke Firestore
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'uid': user.uid,
+          'email': email,
+          'role': role,
+          'name': name,
+          'phone': phone,
+          'address': address ?? '',
+          'childrenCount': childrenCount ?? 0,
+          'posyanduName': posyanduName ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
 
+        // (Logika update status inviteCode untuk kader bisa ditaruh di sini atau di fungsi terpisah)
+      }
       return user;
-    } on FirebaseAuthException catch (e) {
-      throw Exception(_handleAuthError(e));
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  // ==========================
+  // 🔥 VERIFIKASI KODE UNDANGAN (DIPERBAIKI)
+  // ==========================
+  /// Fungsi ini HANYA mengecek apakah kodenya ada dan belum dipakai.
+  /// Tidak lagi melakukan update database di sini.
+  Future<bool> verifyInviteCode(String rawCode) async {
+    try {
+      final cleanCode = rawCode.trim().toUpperCase();
+      debugPrint("Mengecek validitas kode: '$cleanCode'");
+
+      final isValid = await _firestore.verifyInviteCode(cleanCode);
+      return isValid;
+    } catch (e) {
+      debugPrint("ERROR VERIFY CODE: $e");
+      return false;
     }
   }
 
@@ -56,15 +86,14 @@ class AuthService {
   }
 
   // ==========================
-  // 🔥 LOGIN GOOGLE
+  // 🔥 LOGIN GOOGLE (DIPERBAIKI)
   // ==========================
   Future<User?> signInWithGoogle() async {
     try {
-      debugPrint("Mencoba memanggil Google Sign In..."); // Muncul di terminal
+      debugPrint("Mencoba memanggil Google Sign In...");
 
       final googleUser = await GoogleSignIn().signIn();
       if (googleUser == null) {
-        // 🔥 Jika pop-up tertutup/dibatalkan, lempar eror agar UI bereaksi
         throw Exception("Dibatalkan oleh pengguna");
       }
 
@@ -78,20 +107,21 @@ class AuthService {
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user;
 
-      // 🔥 jika user baru → buat di firestore
+      // Jika user baru → buat di firestore
       if (userCredential.additionalUserInfo!.isNewUser) {
         await _firestore.createUser(
           uid: user!.uid,
           email: user.email ?? '',
-          role: '',
+          // Default role untuk Google Sign-In kita set sebagai 'unassigned'.
+          // Nantinya kamu harus mengarahkan mereka ke RoleScreen untuk memilih.
+          role: 'unassigned',
         );
       }
 
       return user;
     } catch (e) {
-      // 🔥 KUNCI PENTING: Tangkap dan tampilkan pesan eror aslinya!
       debugPrint("ERROR GOOGLE SIGN IN: $e");
-      throw Exception(e.toString());
+      throw Exception("Gagal masuk dengan Google. Silakan coba lagi.");
     }
   }
 
@@ -110,9 +140,15 @@ class AuthService {
   // 🔥 LOGOUT
   // ==========================
   Future<void> logout() async {
-    await _auth.signOut(); // Keluar dari Firebase
-    await GoogleSignIn()
-        .signOut(); // 🔥 Tambahkan ini agar pop-up Google muncul lagi saat login
+    await _auth.signOut();
+    await GoogleSignIn().signOut();
+  }
+
+  // ==========================
+  // 🔥 GET ROLE
+  // ==========================
+  Future<String?> getRole() async {
+    return await _firestore.getUserRole();
   }
 
   // ==========================
@@ -120,11 +156,11 @@ class AuthService {
   // ==========================
   String _handleAuthError(FirebaseAuthException e) {
     switch (e.code) {
-      case 'invalid-credential': // (Aturan Firebase Terbaru)
+      case 'invalid-credential':
         return 'Email atau password salah';
-      case 'user-not-found': // (Bisa tetap dibiarkan untuk berjaga-jaga)
+      case 'user-not-found':
         return 'Email tidak terdaftar';
-      case 'wrong-password': // (Bisa tetap dibiarkan untuk berjaga-jaga)
+      case 'wrong-password':
         return 'Password salah';
       case 'email-already-in-use':
         return 'Email sudah digunakan';
@@ -136,41 +172,4 @@ class AuthService {
         return 'Terjadi kesalahan: ${e.message}';
     }
   }
-
-  Future<String?> getRole() async {
-    return await _firestore.getUserRole();
-  }
-// ==========================
-  // 🔥 VERIFIKASI KODE UNDANGAN (UPGRADE)
-  // ==========================
-  Future<bool> verifyInviteCode(String rawCode) async {
-    try {
-      final cleanCode = rawCode.trim().toUpperCase();
-      print("Kirim kode ke Firebase: '$cleanCode'"); 
-
-      final isValid = await _firestore.verifyInviteCode(cleanCode);
-      print("Hasil validasi Firebase: $isValid");
-
-      if (isValid) {
-        final uid = _auth.currentUser?.uid;
-        
-        // JIKA UID ADA, UPDATE DATABASE
-        if (uid != null) {
-          await _firestore.useInviteCode(cleanCode, uid);
-          print("Berhasil update status kode untuk UID: $uid");
-        } else {
-          // JIKA UID TIDAK ADA, TETAP BERIKAN TRUE (TAPI KASIH PERINGATAN)
-          print("PERINGATAN: Kode valid, tapi user belum login (UID null)");
-        }
-        
-        return true; // Tetap return true karena kodenya memang valid
-      }
-      
-      return false;
-    } catch (e) {
-      print("ERROR VERIFY CODE: $e");
-      return false;
-    }
-  }
-
 }

@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 
+// 🔥 Import Sistem Tema & Custom Widgets
+import '../../theme/app_color.dart';
+import '../../theme/app_text_style.dart';
+import '../../widgets/custom_text_field.dart';
+import '../../widgets/custom_button.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -18,9 +24,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool isPasswordHidden = true;
 
   final AuthService _authService = AuthService();
-
-  // 🔥 Warna Utama GrowPosy (Hijau Segar)
-  final Color primaryGreen = const Color(0xFF00D15A);
 
   @override
   void dispose() {
@@ -59,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll("Exception: ", "")),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColor.errorRed, // Menggunakan AppColor
         ),
       );
     }
@@ -89,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceAll("Exception: ", "")),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColor.errorRed, // Menggunakan AppColor
           ),
         );
       }
@@ -101,18 +104,18 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ==========================================
-  // 🎨 TAMPILAN UI MINIMALIS (TANPA ILUSTRASI)
+  // 🎨 TAMPILAN UI (PEMBARUAN LOGO)
   // ==========================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Latar belakang putih bersih
+      backgroundColor: AppColor.bgWhite, // Tersentralisasi
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColor.bgWhite,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: AppColor.textBlack),
           onPressed: () {
             if (Navigator.canPop(context)) {
               Navigator.pop(context);
@@ -130,75 +133,33 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 20),
 
-                // 🔥 LOGO / NAMA APLIKASI
-                Row(
-                  children: [
-                    Icon(Icons.spa, size: 36, color: primaryGreen),
-                    const SizedBox(width: 10),
-                    Text(
-                      "GrowPosy",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: primaryGreen,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+                // 🔥 PEMBARUAN: LOGO TEKS GROWPOSY
+                Image.asset(
+                  'assets/images/logo_teks.png',
+                  height: 35,
+                  fit: BoxFit.contain,
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 30),
 
                 // 🔥 JUDUL
-                const Text(
-                  "Selamat Datang",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
+                const Text("Selamat Datang", style: AppTextStyle.heading1),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   "Silakan masuk menggunakan email atau akun Google Anda.",
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[600],
-                    height: 1.5,
-                  ),
+                  style: AppTextStyle.bodyText,
                 ),
 
                 const SizedBox(height: 40),
 
                 // 🔥 INPUT EMAIL
-                const Text(
-                  "Email",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
+                const Text("Email", style: AppTextStyle.inputLabel),
                 const SizedBox(height: 8),
-                TextFormField(
+                CustomTextField(
                   controller: emailController,
+                  hintText: "Contoh: nama@email.com",
+                  prefixIcon: Icons.person_outline,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    hintText: "Contoh: nama@email.com",
-                    hintStyle: TextStyle(color: Colors.grey[400]),
-                    prefixIcon: const Icon(Icons.person_outline),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: primaryGreen, width: 2),
-                    ),
-                  ),
                   validator: (value) {
                     if (value == null || value.isEmpty)
                       return "Email wajib diisi";
@@ -213,19 +174,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      "Password",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
+                    const Text("Password", style: AppTextStyle.inputLabel),
                     GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/reset'),
-                      child: Text(
+                      child: const Text(
                         "Lupa Password?",
                         style: TextStyle(
-                          color: primaryGreen,
+                          color: AppColor.primaryGreen,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
@@ -234,41 +189,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                TextFormField(
+                CustomTextField(
                   controller: passwordController,
-                  obscureText: isPasswordHidden,
-                  decoration: InputDecoration(
-                    hintText: "Masukkan password Anda",
-                    hintStyle: TextStyle(color: Colors.grey[400]),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        isPasswordHidden
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          isPasswordHidden = !isPasswordHidden;
-                        });
-                      },
+                  hintText: "Masukkan password Anda",
+                  prefixIcon: Icons.lock_outline,
+                  isPassword: isPasswordHidden,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      isPasswordHidden
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: AppColor.textGrey,
                     ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: primaryGreen, width: 2),
-                    ),
+                    onPressed: () {
+                      setState(() {
+                        isPasswordHidden = !isPasswordHidden;
+                      });
+                    },
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty)
@@ -281,36 +218,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 35),
 
                 // 🔥 TOMBOL LOGIN
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryGreen,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : const Text(
-                            "Masuk Sekarang",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
+                CustomButton(
+                  text: "Masuk Sekarang",
+                  onPressed: handleLogin,
+                  isLoading: isLoading,
                 ),
 
                 const SizedBox(height: 24),
@@ -318,18 +229,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 // 🔥 GARIS "ATAU MASUK DENGAN"
                 Row(
                   children: [
-                    Expanded(
-                      child: Divider(color: Colors.grey[300], thickness: 1),
+                    const Expanded(
+                      child: Divider(color: AppColor.borderGrey, thickness: 1),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         "atau masuk dengan",
-                        style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                        style: TextStyle(
+                          color: AppColor.textGrey,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
-                    Expanded(
-                      child: Divider(color: Colors.grey[300], thickness: 1),
+                    const Expanded(
+                      child: Divider(color: AppColor.borderGrey, thickness: 1),
                     ),
                   ],
                 ),
@@ -337,38 +251,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 24),
 
                 // 🔥 TOMBOL GOOGLE
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton(
-                    onPressed: isLoading ? null : handleGoogleLogin,
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      side: BorderSide(color: Colors.grey[300]!),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.g_mobiledata,
-                          size: 36,
-                          color: Colors.red,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          "Google",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
+                CustomButton(
+                  text: "Google",
+                  onPressed: handleGoogleLogin,
+                  isLoading: isLoading,
+                  isOutlined: true,
+                  icon: const Icon(
+                    Icons.g_mobiledata,
+                    size: 36,
+                    color: AppColor.errorRed,
                   ),
                 ),
 
@@ -379,14 +270,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: GestureDetector(
                     onTap: () => Navigator.pushNamed(context, '/register'),
                     child: RichText(
-                      text: TextSpan(
+                      text: const TextSpan(
                         text: "Belum punya akun? ",
-                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                        style: TextStyle(
+                          color: AppColor.textGrey,
+                          fontSize: 14,
+                        ),
                         children: [
                           TextSpan(
                             text: "Daftar Sekarang",
                             style: TextStyle(
-                              color: primaryGreen,
+                              color: AppColor.primaryGreen,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

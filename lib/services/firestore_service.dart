@@ -1,11 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/child_model.dart';
+import 'package:flutter/foundation.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // 🔥 CREATE USER
+  String get _currentUid {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) throw Exception("User tidak terautentikasi");
+    return uid;
+  }
+
+  // ==========================
+  // 🔥 USER CRUD
+  // ==========================
   Future<void> createUser({
     required String uid,
     required String email,
@@ -17,29 +26,30 @@ class FirestoreService {
       'role': role,
       'name': name,
       'createdAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
   }
 
-  // 🔥 GET ROLE
   Future<String?> getUserRole() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-
     if (uid == null) return null;
 
     final doc = await _db.collection('users').doc(uid).get();
-
     return doc.data()?['role'];
   }
 
-  // 🔥 ADD CHILD
+  Future<void> setUserRole(String role) async {
+    await _db.collection('users').doc(_currentUid).update({'role': role});
+  }
+
+  // ==========================
+  // 🔥 CHILD CRUD (IBU)
+  // ==========================
   Future<void> addChild({
     required String name,
     required int age,
     required String gender,
   }) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    await _db.collection('users').doc(uid).collection('children').add({
+    await _db.collection('users').doc(_currentUid).collection('children').add({
       'name': name,
       'age': age,
       'gender': gender,
@@ -47,13 +57,10 @@ class FirestoreService {
     });
   }
 
-  // 🔥 GET CHILDREN
   Stream<List<ChildModel>> getChildren() {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
     return _db
         .collection('users')
-        .doc(uid)
+        .doc(_currentUid)
         .collection('children')
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -65,37 +72,79 @@ class FirestoreService {
   }
 
   // ==========================
-  // 🔥 GET ALL CHILDREN (KADER)
+  // 🔥 DATA ANAK GLOBAL (KADER)
   // ==========================
   Stream<List<Map<String, dynamic>>> getAllChildrenForKader() {
-    return _db.collection('users').snapshots().asyncMap((usersSnapshot) async {
-      List<Map<String, dynamic>> allChildren = [];
-
-      for (var userDoc in usersSnapshot.docs) {
-        final childrenSnapshot = await userDoc.reference
-            .collection('children')
-            .get();
-
-        for (var childDoc in childrenSnapshot.docs) {
-          allChildren.add({
-            'id': childDoc.id,
-            'userId': userDoc.id,
-            ...childDoc.data(),
-          });
-        }
-      }
-
-      return allChildren;
-    });
+    return _db
+        .collectionGroup('children')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) {
+            final userId = doc.reference.parent.parent?.id ?? '';
+            return {'id': doc.id, 'userId': userId, ...doc.data()};
+          }).toList();
+        });
   }
 
   Stream<int> getTotalAllChildren() {
-  return _db.collectionGroup('children').snapshots().map((snap) => snap.docs.length);
-}
+    return _db
+        .collectionGroup('children')
+        .snapshots()
+        .map((snap) => snap.docs.length);
+  }
 
   // ==========================
-  // 🔥 GET LAST WEIGHT GENERIC
+  // 🔥 GROWTH TRACKING
   // ==========================
+  Future<void> addGrowth({
+    required String userId,
+    required String childId,
+    required double weight,
+    required double height,
+  }) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('children')
+        .doc(childId)
+        .collection('growth')
+        .add({
+          'weight': weight,
+          'height': height,
+          'date': FieldValue.serverTimestamp(),
+        });
+  }
+
+  Stream<List<Map<String, dynamic>>> getGrowth(String childId) {
+    return _db
+        .collection('users')
+        .doc(_currentUid)
+        .collection('children')
+        .doc(childId)
+        .collection('growth')
+        .orderBy('date')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
+  }
+
+  Stream<double?> getLastWeight(String childId) {
+    return _db
+        .collection('users')
+        .doc(_currentUid)
+        .collection('children')
+        .doc(childId)
+        .collection('growth')
+        .orderBy('date', descending: true)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+          if (snapshot.docs.isEmpty) return null;
+          final data = snapshot.docs.first.data();
+          return (data['weight'] ?? 0).toDouble();
+        });
+  }
+
   Future<double?> getLastWeightGlobal(String userId, String childId) async {
     final snapshot = await _db
         .collection('users')
@@ -108,113 +157,54 @@ class FirestoreService {
         .get();
 
     if (snapshot.docs.isEmpty) return null;
-
     return (snapshot.docs.first.data()['weight'] as num).toDouble();
   }
 
   // ==========================
-  // 🔥 GROWTH (NEW FEATURE)
-  // ==========================
-
-  Future<void> addGrowth({
-    required String childId,
-    required double weight,
-    required double height,
-  }) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    await _db
-        .collection('users')
-        .doc(uid)
-        .collection('children')
-        .doc(childId)
-        .collection('growth')
-        .add({
-          'weight': weight,
-          'height': height,
-          'date': FieldValue.serverTimestamp(),
-        });
-  }
-
-  Stream<List<Map<String, dynamic>>> getGrowth(String childId) {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    return _db
-        .collection('users')
-        .doc(uid)
-        .collection('children')
-        .doc(childId)
-        .collection('growth')
-        .orderBy('date')
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
-  }
-
-  // ==========================
-  // 🔥 LAST WEIGHT (NEW)
-  // ==========================
-
-  Stream<double?> getLastWeight(String childId) {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    return _db
-        .collection('users')
-        .doc(uid)
-        .collection('children')
-        .doc(childId)
-        .collection('growth')
-        .orderBy('date', descending: true)
-        .limit(1)
-        .snapshots()
-        .map((snapshot) {
-          if (snapshot.docs.isEmpty) return null;
-
-          final data = snapshot.docs.first.data();
-          return (data['weight'] ?? 0).toDouble();
-        });
-  }
-
-  // ==========================
-  // 🔥 VERIFY INVITE CODE (UPGRADED)
+  // 🔥 INVITE CODE SYSTEM (KADER)
   // ==========================
   Future<bool> verifyInviteCode(String code) async {
-    // .trim() akan menghapus spasi yang tidak sengaja terketik di awal/akhir
-    final cleanCode = code.trim(); 
-
+    final cleanCode = code.trim().toUpperCase();
     final result = await _db
         .collection('invite_codes')
         .where('code', isEqualTo: cleanCode)
         .where('isUsed', isEqualTo: false)
         .get();
-
     return result.docs.isNotEmpty;
   }
 
-  // ==========================
-  // 🔥 USE INVITE CODE
-  // ==========================
   Future<void> useInviteCode(String code, String uid) async {
+    final cleanCode = code.trim().toUpperCase();
     final query = await _db
         .collection('invite_codes')
-        .where('code', isEqualTo: code)
+        .where('code', isEqualTo: cleanCode)
         .get();
 
     if (query.docs.isNotEmpty) {
       final docId = query.docs.first.id;
-
       await _db.collection('invite_codes').doc(docId).update({
         'isUsed': true,
         'usedBy': uid,
+        'usedAt': FieldValue.serverTimestamp(),
       });
     }
   }
 
-  // ==========================
-  // 🔥 SET ROLE USER
-  // ==========================
-  Future<void> setUserRole(String role) async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+  // ==========================================
+  // 📅 MANAJEMEN JADWAL POSYANDU (PERBAIKAN BARU)
+  // ==========================================
+  Future<void> addJadwal(Map<String, dynamic> data) async {
+    await _db.collection('jadwal').add({
+      ...data,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
 
-    await _db.collection('users').doc(uid).update({'role': role});
+  Stream<List<Map<String, dynamic>>> getJadwal() {
+    return _db
+        .collection('jadwal')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => doc.data()).toList());
   }
 }

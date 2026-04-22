@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../services/firestore_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/firestore_service.dart';
+
+// 🔥 Import Sistem Tema & Custom Widgets
+import '../../theme/app_color.dart';
+import '../../theme/app_text_style.dart';
+import '../../widgets/custom_button.dart';
+import '../../widgets/custom_text_field.dart';
 
 class RoleScreen extends StatefulWidget {
   const RoleScreen({super.key});
@@ -10,191 +16,258 @@ class RoleScreen extends StatefulWidget {
 }
 
 class _RoleScreenState extends State<RoleScreen> {
-  final FirestoreService firestore = FirestoreService();
+  final FirestoreService _firestore = FirestoreService();
   final codeController = TextEditingController();
+
+  String? selectedRole;
   bool isLoading = false;
 
-  final Color primaryGreen = const Color(0xFF00D15A);
-
-  // 🔥 LOGIKA BACKEND (Tetap sama, hanya tambah UI Feedback)
-  Future<void> selectIbu() async {
-    setState(() => isLoading = true);
-    await firestore.setUserRole('ibu');
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/home_ibu');
+  @override
+  void dispose() {
+    codeController.dispose();
+    super.dispose();
   }
 
-  Future<void> selectKader() async {
-    final code = codeController.text.trim().toUpperCase(); // Tambahkan Uppercase otomatis
-
-    if (code.isEmpty) {
+  // ==========================
+  // ⚙️ LOGIKA PENYIMPANAN ROLE
+  // ==========================
+  void handleSaveRole() async {
+    if (selectedRole == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Kode wajib diisi untuk Kader"))
+        const SnackBar(
+          content: Text("Silakan pilih peran Anda terlebih dahulu."),
+          backgroundColor: AppColor.errorRed,
+        ),
       );
       return;
     }
 
     setState(() => isLoading = true);
+
     try {
-      final isValid = await firestore.verifyInviteCode(code);
-      if (!isValid) {
-        setState(() => isLoading = false);
-        _showErrorSnackBar("Kode tidak valid atau sudah digunakan");
-        return;
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null)
+        throw Exception("Sesi tidak valid, silakan login ulang.");
+
+      // 🔥 Keamanan: Jika Kader, wajib verifikasi kode terlebih dahulu
+      if (selectedRole == 'kader') {
+        final code = codeController.text.trim();
+        if (code.isEmpty) {
+          throw Exception("Kode verifikasi kader wajib diisi.");
+        }
+
+        bool isValid = await _firestore.verifyInviteCode(code);
+        if (!isValid) {
+          throw Exception("Kode kader tidak valid atau sudah digunakan.");
+        }
+
+        // Tandai kode sebagai terpakai oleh akun Google ini
+        await _firestore.useInviteCode(code, uid);
       }
 
-      final uid = FirebaseAuth.instance.currentUser!.uid;
-      await firestore.setUserRole('kader');
-      await firestore.useInviteCode(code, uid);
+      // 🔥 Update role di Firestore
+      await _firestore.setUserRole(selectedRole!);
 
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home_kader');
+
+      // 🔥 Arahkan ke dashboard yang tepat
+      if (selectedRole == 'ibu') {
+        Navigator.pushReplacementNamed(context, '/home_ibu');
+      } else {
+        Navigator.pushReplacementNamed(context, '/home_kader');
+      }
     } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll("Exception: ", "")),
+          backgroundColor: AppColor.errorRed,
+        ),
+      );
+    }
+
+    if (mounted) {
       setState(() => isLoading = false);
-      _showErrorSnackBar("Terjadi kesalahan koneksi");
     }
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              Text(
-                "Pilih Peran Anda",
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.grey[800]),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Sesuaikan akses aplikasi dengan posisi Anda di Posyandu.",
-                style: TextStyle(fontSize: 15, color: Colors.grey[600]),
-              ),
-              const SizedBox(height: 40),
-
-              // 🏥 CARD UNTUK IBU
-              _buildRoleCard(
-                title: "Ibu / Orang Tua",
-                subtitle: "Pantau tumbuh kembang anak Anda secara rutin.",
-                icon: Icons.family_restroom_rounded,
-                color: primaryGreen,
-                onTap: isLoading ? null : selectIbu,
-              ),
-
-              const SizedBox(height: 20),
-
-              // 🛡️ CARD UNTUK KADER
-              _buildRoleCard(
-                title: "Kader Posyandu",
-                subtitle: "Kelola data balita dan buat laporan wilayah.",
-                icon: Icons.admin_panel_settings_rounded,
-                color: Colors.blue,
-                onTap: isLoading ? null : _showKaderCodeDialog, // Klik ini muncul dialog kode
-              ),
-              
-              if (isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 30),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // 🔥 WIDGET: CARD ROLE MODERN
+  // ==========================
+  // 🎨 WIDGET KARTU PILIHAN
+  // ==========================
   Widget _buildRoleCard({
+    required String roleValue,
     required String title,
     required String subtitle,
     required IconData icon,
-    required Color color,
-    VoidCallback? onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(24),
+    // Mengecek apakah kartu ini sedang dipilih
+    final isSelected = selectedRole == roleValue;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedRole = roleValue;
+          // Kosongkan input kode jika user berpindah pilihan
+          if (roleValue != 'kader') codeController.clear();
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey[200]!, width: 2),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5)),
-          ],
+          color: isSelected
+              ? AppColor.primaryGreen.withOpacity(0.08)
+              : AppColor.bgWhite,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColor.primaryGreen : AppColor.borderGrey,
+            width: isSelected ? 2 : 1,
+          ),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-              child: Icon(icon, color: color, size: 30),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColor.primaryGreen : Colors.grey[100],
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? AppColor.bgWhite : AppColor.textGrey,
+                size: 28,
+              ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected
+                          ? AppColor.primaryGreen
+                          : AppColor.textBlack,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColor.textGrey,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: AppColor.primaryGreen),
           ],
         ),
       ),
     );
   }
 
-  // 🔥 DIALOG INPUT KODE (Biar Tampilan Bersih)
-  void _showKaderCodeDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text("Verifikasi Kader"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Masukkan kode khusus untuk mengaktifkan fitur Kader.", style: TextStyle(fontSize: 14)),
-            const SizedBox(height: 20),
-            TextField(
-              controller: codeController,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: "Contoh: KADER-SIAGA",
-                prefixIcon: const Icon(Icons.lock_outline),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  // ==========================
+  // 🎨 TAMPILAN UTAMA (UI)
+  // ==========================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColor.bgWhite,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight:
+                      constraints.maxHeight -
+                      48, // Memastikan tombol selalu bisa di bawah
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+
+                      // 🔥 HEADER
+                      const Text(
+                        "Satu Langkah Lagi!",
+                        style: AppTextStyle.heading1,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Karena Anda masuk menggunakan Google, silakan pilih peran Anda untuk melanjutkan ke aplikasi GrowPosy.",
+                        style: AppTextStyle.bodyText,
+                      ),
+                      const SizedBox(height: 40),
+
+                      // 🔥 KARTU IBU
+                      _buildRoleCard(
+                        roleValue: 'ibu',
+                        title: 'Ibu / Orang Tua',
+                        subtitle:
+                            'Pantau tumbuh kembang anak Anda dengan mudah.',
+                        icon: Icons.child_care,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 🔥 KARTU KADER
+                      _buildRoleCard(
+                        roleValue: 'kader',
+                        title: 'Kader Posyandu',
+                        subtitle: 'Kelola data anak dan operasional posyandu.',
+                        icon: Icons.admin_panel_settings_outlined,
+                      ),
+
+                      // 🔥 FORM KODE KADER (Hanya muncul jika Kader dipilih)
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: selectedRole == 'kader'
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 24.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Kode Verifikasi Kader",
+                                      style: AppTextStyle.inputLabel,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    CustomTextField(
+                                      controller: codeController,
+                                      hintText: "Masukkan kode dari Puskesmas",
+                                      prefixIcon: Icons.vpn_key_outlined,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+
+                      const Spacer(),
+                      const SizedBox(height: 40),
+
+                      // 🔥 TOMBOL LANJUTKAN
+                      CustomButton(
+                        text: "Lanjutkan ke Aplikasi",
+                        onPressed: handleSaveRole,
+                        isLoading: isLoading,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              selectKader();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-            child: const Text("Verifikasi"),
-          ),
-        ],
       ),
     );
   }

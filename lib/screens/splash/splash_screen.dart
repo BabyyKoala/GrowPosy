@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/firestore_service.dart';
+import '../../services/session_service.dart';
+
+// 🔥 Import Sistem Tema
+import '../../theme/app_color.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,64 +19,70 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    checkSession();
+    _initializeApp();
   }
 
-  Future<void> checkSession() async {
-    await Future.delayed(const Duration(seconds: 3));
-
-    final user = FirebaseAuth.instance.currentUser;
+  // ==========================
+  // ⚙️ LOGIKA SESI
+  // ==========================
+  Future<void> _initializeApp() async {
+    final results = await Future.wait([
+      Future.delayed(const Duration(seconds: 2)),
+      _determineNextRoute(),
+    ]);
 
     if (!mounted) return;
 
+    final nextRoute = results[1] as String;
+    Navigator.pushReplacementNamed(context, nextRoute);
+  }
+
+  Future<String> _determineNextRoute() async {
     try {
-      if (user == null) {
-        Navigator.pushReplacementNamed(context, '/');
-        return;
-      }
+      final isFirstTime = await SessionService.isFirstTime();
+      if (isFirstTime) return '/onboarding';
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return '/';
 
       final role = await _firestore.getUserRole();
+      if (role == 'ibu') return '/home_ibu';
+      if (role == 'kader') return '/home_kader';
 
-      if (!mounted) return;
-
-      if (role == 'ibu') {
-        Navigator.pushReplacementNamed(context, '/home_ibu');
-      } else if (role == 'kader') {
-        Navigator.pushReplacementNamed(context, '/home_kader');
-      } else {
-        Navigator.pushReplacementNamed(context, '/role');
-      }
+      return '/role';
     } catch (e) {
-      // 🔥 fallback kalau firestore error
-      Navigator.pushReplacementNamed(context, '/');
+      debugPrint("Error at Splash: $e");
+      return '/';
     }
   }
 
+  // ==========================
+  // 🎨 TAMPILAN UI SPLASH SCREEN
+  // ==========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
+      // 🔥 Diubah ke putih agar logo baru menyatu dengan layar
+      backgroundColor: AppColor.bgWhite,
+      body: SizedBox(
         width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF4CAF50), Color(0xFF81C784)],
-          ),
-        ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.spa, size: 100, color: Colors.white),
-            SizedBox(height: 20),
-            Text(
-              "GrowPosy",
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            // 🔥 Memanggil Logo Utama Baru
+            Image.asset(
+              'assets/images/logo_utama.png',
+              width: 220, // Ukuran bisa disesuaikan selera
+              fit: BoxFit.contain,
             ),
-            SizedBox(height: 30),
-            CircularProgressIndicator(color: Colors.white),
+
+            const SizedBox(height: 50),
+
+            // 🔥 Warna loading disesuaikan menjadi hijau
+            const CircularProgressIndicator(
+              color: AppColor.primaryGreen,
+              strokeWidth: 3,
+            ),
           ],
         ),
       ),

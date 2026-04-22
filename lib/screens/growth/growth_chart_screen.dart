@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../../services/firestore_service.dart';
+
+// 🔥 Import Sistem Tema
+import '../../theme/app_color.dart';
+import '../../theme/app_text_style.dart';
 
 class GrowthChartScreen extends StatelessWidget {
   final String childId;
@@ -14,7 +19,7 @@ class GrowthChartScreen extends StatelessWidget {
   });
 
   // =========================
-  // 🔥 RANGE BERAT
+  // 🔥 RANGE BERAT & TINGGI (Estimasi Logika Dasar KMS)
   // =========================
   Map<String, double> getWeightRangeByAge(int age) {
     if (age <= 1) return {'min': 3, 'max': 10};
@@ -24,9 +29,6 @@ class GrowthChartScreen extends StatelessWidget {
     return {'min': 15, 'max': 25};
   }
 
-  // =========================
-  // 🔥 RANGE TINGGI
-  // =========================
   Map<String, double> getHeightRangeByAge(int age) {
     if (age <= 1) return {'min': 50, 'max': 75};
     if (age <= 2) return {'min': 70, 'max': 90};
@@ -36,208 +38,400 @@ class GrowthChartScreen extends StatelessWidget {
   }
 
   // =========================
-  // 🔥 CONVERT TIME
-  // =========================
-  double toDays(Timestamp timestamp) {
-    return timestamp.toDate().millisecondsSinceEpoch / 100000000;
-  }
-
-  // =========================
-  // 🔥 DETEKSI TREN BERAT
+  // 🔥 DETEKSI TREN BERAT (Standar Posyandu: Peringatan 2T)
   // =========================
   String detectWeightTrend(List<Map<String, dynamic>> growth) {
-    if (growth.length < 3) return "DATA KURANG";
+    if (growth.length < 2) return "Data Kurang";
 
-    int declineCount = 0;
+    // Data dijamin kronologis (terlama -> terbaru)
+    final current = (growth.last['weight'] ?? 0).toDouble();
+    final prev = (growth[growth.length - 2]['weight'] ?? 0).toDouble();
 
-    for (int i = 1; i < growth.length; i++) {
-      final prev = (growth[i - 1]['weight'] ?? 0).toDouble();
-      final current = (growth[i]['weight'] ?? 0).toDouble();
-
-      // 🔥 filter noise kecil
-      if (current < prev - 0.2) {
-        declineCount++;
+    if (current < prev) {
+      if (growth.length >= 3) {
+        final prev2 = (growth[growth.length - 3]['weight'] ?? 0).toDouble();
+        if (prev < prev2)
+          return "Turun 2x Berturut ⚠️"; // Ini butuh rujukan di KMS
       }
+      return "Turun Bulan Ini 📉";
+    } else if (current == prev) {
+      return "Tidak Naik (Tetap) ⚠️";
     }
-
-    if (declineCount >= 2) {
-      return "TREN MENURUN ⚠️";
-    } else if (declineCount == 1) {
-      return "SEDIKIT TURUN";
-    } else {
-      return "STABIL / NAIK";
-    }
+    return "Naik 📈";
   }
 
   @override
   Widget build(BuildContext context) {
     final firestore = FirestoreService();
-
     final weightRange = getWeightRangeByAge(age);
     final heightRange = getHeightRangeByAge(age);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Grafik Pertumbuhan")),
-
+      backgroundColor: AppColor.bgWhite,
+      appBar: AppBar(
+        backgroundColor: AppColor.bgWhite,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColor.textBlack),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          "Grafik KMS Digital",
+          style: TextStyle(
+            color: AppColor.textBlack,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
+        // 🔥 PERBAIKAN BUG KRUSIAL:
+        // DIBIARKAN KRONOLOGIS (Kiri -> Kanan = Lama -> Baru)
         stream: firestore.getGrowth(childId),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColor.primaryGreen),
+            );
           }
 
-          final growth = snapshot.data!;
+          final growth = snapshot.data ?? [];
 
           if (growth.isEmpty) {
-            return const Center(child: Text("Belum ada data"));
+            return _buildEmptyState();
           }
 
+          // Mengambil data PALING BARU (Ujung kanan array)
           final last = growth.last;
-
           final weight = (last['weight'] ?? 0).toDouble();
           final height = (last['height'] ?? 0).toDouble();
 
-          // =========================
-          // 🔥 STATUS BERAT
-          // =========================
-          String weightStatus;
-          if (weight < weightRange['min']!) {
-            weightStatus = "KURANG";
-          } else if (weight > weightRange['max']!) {
-            weightStatus = "BERLEBIH";
-          } else {
-            weightStatus = "NORMAL";
-          }
+          // STATUS LOGIC
+          String weightStatus = weight < weightRange['min']!
+              ? "KURANG"
+              : weight > weightRange['max']!
+              ? "BERLEBIH"
+              : "NORMAL";
+          Color weightColor = weightStatus == "NORMAL"
+              ? AppColor.primaryGreen
+              : AppColor.errorRed;
 
-          // =========================
-          // 🔥 STATUS TINGGI
-          // =========================
-          String heightStatus;
-          Color heightColor;
+          String heightStatus = height < heightRange['min']!
+              ? "STUNTING"
+              : height > heightRange['max']!
+              ? "TINGGI BERLEBIH"
+              : "NORMAL";
+          Color heightColor = heightStatus == "NORMAL"
+              ? AppColor.primaryGreen
+              : Colors.orange;
 
-          if (height < heightRange['min']!) {
-            heightStatus = "STUNTING";
-            heightColor = Colors.orange;
-          } else if (height > heightRange['max']!) {
-            heightStatus = "TINGGI BERLEBIH";
-            heightColor = Colors.blue;
-          } else {
-            heightStatus = "NORMAL";
-            heightColor = Colors.green;
-          }
-
-          // =========================
-          // 🔥 DETEKSI TREN
-          // =========================
           final trend = detectWeightTrend(growth);
+          Color trendColor = trend.contains("⚠️") || trend.contains("Turun")
+              ? AppColor.errorRed
+              : AppColor.primaryGreen;
 
-          Color trendColor;
-          if (trend.contains("MENURUN")) {
-            trendColor = Colors.red;
-          } else if (trend.contains("SEDIKIT")) {
-            trendColor = Colors.orange;
-          } else {
-            trendColor = Colors.green;
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(20),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            physics: const BouncingScrollPhysics(),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // =========================
-                // 🔥 GRAFIK
-                // =========================
-                Expanded(
-                  child: LineChart(
-                    LineChartData(
-                      borderData: FlBorderData(show: true),
-
-                      titlesData: FlTitlesData(
-                        show: true,
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            interval: 1,
-                            getTitlesWidget: (value, meta) {
-                              final date = DateTime.fromMillisecondsSinceEpoch(
-                                (value * 100000000).toInt(),
-                              );
-
-                              return Text(
-                                "${date.day}/${date.month}",
-                                style: const TextStyle(fontSize: 10),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-
-                      lineBarsData: [
-                        // 🔥 BERAT
-                        LineChartBarData(
-                          isCurved: true,
-                          spots: growth.map((e) {
-                            final t = e['date'] as Timestamp;
-                            return FlSpot(
-                              toDays(t),
-                              (e['weight'] ?? 0).toDouble(),
-                            );
-                          }).toList(),
-                        ),
-
-                        // 🔥 TINGGI
-                        LineChartBarData(
-                          isCurved: true,
-                          spots: growth.map((e) {
-                            final t = e['date'] as Timestamp;
-                            return FlSpot(
-                              toDays(t),
-                              (e['height'] ?? 0).toDouble(),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-                  ),
+                // 🔥 KARTU DIAGNOSIS TERAKHIR
+                const Text(
+                  "Ringkasan Pemeriksaan Terakhir",
+                  style: AppTextStyle.heading1,
                 ),
-
-                const SizedBox(height: 20),
-
-                // =========================
-                // 🔥 STATUS + TREND
-                // =========================
-                Column(
+                const SizedBox(height: 16),
+                Row(
                   children: [
-                    Text(
-                      "Status Berat: $weightStatus",
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Status Tinggi: $heightStatus",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: heightColor,
+                    Expanded(
+                      child: _buildDiagnosisCard(
+                        "Berat Terakhir",
+                        "$weight kg",
+                        weightStatus,
+                        weightColor,
                       ),
                     ),
-                    const SizedBox(height: 12),
-
-                    // 🔥 TREND
-                    Text(
-                      "Tren Berat: $trend",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: trendColor,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildDiagnosisCard(
+                        "Tinggi Terakhir",
+                        "$height cm",
+                        heightStatus,
+                        heightColor,
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: trendColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: trendColor.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.analytics_outlined, color: trendColor),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Tren Pertumbuhan",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColor.textGrey,
+                            ),
+                          ),
+                          Text(
+                            trend,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: trendColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+
+                // 🔥 GRAFIK BERAT BADAN
+                const Text(
+                  "Grafik Berat Badan (kg)",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColor.textBlack,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildChartBox(growth, 'weight', AppColor.primaryGreen),
+
+                const SizedBox(height: 40),
+
+                // 🔥 GRAFIK TINGGI BADAN
+                const Text(
+                  "Grafik Tinggi Badan (cm)",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColor.textBlack,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildChartBox(growth, 'height', Colors.blue),
+
+                const SizedBox(height: 40),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  // =========================
+  // 🎨 WIDGET KARTU DIAGNOSIS
+  // =========================
+  Widget _buildDiagnosisCard(
+    String title,
+    String value,
+    String status,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColor.borderGrey),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(color: AppColor.textGrey, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColor.textBlack,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              status,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // 🎨 WIDGET GRAFIK FL_CHART
+  // =========================
+  Widget _buildChartBox(
+    List<Map<String, dynamic>> growth,
+    String key,
+    Color lineColor,
+  ) {
+    // Cari nilai maksimum untuk mengatur tinggi chart agar rapi
+    double maxY = 0;
+    for (var data in growth) {
+      double val = (data[key] ?? 0).toDouble();
+      if (val > maxY) maxY = val;
+    }
+    maxY = maxY + (key == 'weight' ? 5 : 20); // Tambah ruang atas
+
+    return Container(
+      height: 250,
+      padding: const EdgeInsets.only(top: 24, right: 24, left: 10, bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColor.borderGrey),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: LineChart(
+        LineChartData(
+          minX: 0,
+          maxX: growth.length > 1 ? (growth.length - 1).toDouble() : 1,
+          minY: 0,
+          maxY: maxY,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: key == 'weight' ? 5 : 20,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: AppColor.borderGrey,
+              strokeWidth: 1,
+              dashArray: [5, 5],
+            ),
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                interval: 1,
+                getTitlesWidget: (value, meta) {
+                  int index = value.toInt();
+                  if (index < 0 || index >= growth.length) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final date = (growth[index]['date'] as Timestamp).toDate();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      DateFormat('d MMM').format(date),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColor.textGrey,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                interval: key == 'weight' ? 5 : 20,
+                getTitlesWidget: (value, meta) => Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColor.textGrey,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              isCurved: false, // Kurva kaku agar lebih mirip KMS manual asli
+              color: lineColor,
+              barWidth: 3,
+              isStrokeCapRound: true,
+              dotData: const FlDotData(show: true),
+              belowBarData: BarAreaData(
+                show: true,
+                color: lineColor.withOpacity(0.1),
+              ),
+              spots: List.generate(growth.length, (index) {
+                return FlSpot(
+                  index.toDouble(),
+                  (growth[index][key] ?? 0).toDouble(),
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 100),
+          Icon(Icons.show_chart_rounded, size: 64, color: AppColor.borderGrey),
+          const SizedBox(height: 16),
+          const Text(
+            "Belum ada data pertumbuhan.\nKader akan mengisi data ini saat posyandu.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppColor.textGrey),
+          ),
+        ],
       ),
     );
   }

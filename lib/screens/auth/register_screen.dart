@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 
+// 🔥 Import Sistem Tema & Custom Widgets
+import '../../theme/app_color.dart';
+import '../../theme/app_text_style.dart';
+import '../../widgets/custom_text_field.dart';
+import '../../widgets/custom_button.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -27,10 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String selectedRole = 'ibu';
   bool isLoading = false;
-  bool isPasswordHidden = true; // Fitur tombol mata password
-
-  // 🔥 Warna Utama GrowPosy (Hijau Segar)
-  final Color primaryGreen = const Color(0xFF00D15A);
+  bool isPasswordHidden = true;
 
   @override
   void dispose() {
@@ -53,38 +56,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => isLoading = true);
 
     try {
-      // 🔥 PERBAIKAN: Cek kode kader ke Database (Firestore)
       if (selectedRole == 'kader') {
-        bool isCodeValid = await _authService.verifyInviteCode(codeController.text);
+        bool isCodeValid = await _authService.verifyInviteCode(
+          codeController.text,
+        );
         if (!isCodeValid) {
           throw Exception("Kode kader tidak valid atau sudah digunakan");
         }
       }
 
+      // 🔥 Mengirim SEMUA data ke AuthService
       final user = await _authService.register(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
         role: selectedRole,
         name: nameController.text.trim(),
+        phone: phoneController.text.trim(),
+        address: selectedRole == 'ibu' ? addressController.text.trim() : null,
+        childrenCount: selectedRole == 'ibu'
+            ? int.tryParse(childrenCountController.text.trim()) ?? 0
+            : null,
+        posyanduName: selectedRole == 'kader'
+            ? posyanduController.text.trim()
+            : null,
+        inviteCode: selectedRole == 'kader' ? codeController.text.trim() : null,
       );
 
       if (user != null && mounted) {
-        // Jika pendaftaran berhasil, kode di database otomatis ditandai 'terpakai'
-        // karena kita memanggil verifyInviteCode di atas.
-        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Registrasi berhasil! Silakan masuk."),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColor.primaryGreen,
           ),
         );
-        Navigator.pushReplacementNamed(context, '/'); 
+        Navigator.pushReplacementNamed(context, '/'); // Kembali ke Login
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll("Exception: ", "")),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColor.errorRed,
         ),
       );
     }
@@ -92,54 +103,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   // ==========================
-  // 🎨 HELPER DESAIN INPUT (Biar kode rapi)
-  // ==========================
-  InputDecoration _buildInputDecoration(String hint, IconData icon) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[400]),
-      prefixIcon: Icon(icon, color: Colors.grey),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: primaryGreen, width: 2),
-      ),
-    );
-  }
-
-  // Builder untuk Label Form
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, top: 20.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-      ),
-    );
-  }
-
-  // ==========================
-  // 🎨 TAMPILAN UI
+  // 🎨 TAMPILAN UI (PEMBARUAN LOGO)
   // ==========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColor.bgWhite,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColor.bgWhite,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back, color: AppColor.textBlack),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -151,53 +125,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🔥 HEADER
-                Row(
-                  children: [
-                    Icon(Icons.spa, size: 36, color: primaryGreen),
-                    const SizedBox(width: 10),
-                    Text(
-                      "GrowPosy",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: primaryGreen,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+                // 🔥 PEMBARUAN: LOGO TEKS GROWPOSY
+                Image.asset(
+                  'assets/images/logo_teks.png',
+                  height: 45,
+                  fit: BoxFit.contain,
+                ),
+
+                const SizedBox(height: 30),
+                const Text("Buat Akun Baru", style: AppTextStyle.heading1),
+                const SizedBox(height: 8),
+                const Text(
+                  "Lengkapi data diri Anda di bawah ini untuk bergabung bersama GrowPosy.",
+                  style: AppTextStyle.bodyText,
                 ),
                 const SizedBox(height: 30),
-                const Text(
-                  "Buat Akun Baru",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Lengkapi data diri Anda di bawah ini untuk bergabung bersama GrowPosy.",
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Colors.grey[600],
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 10),
 
                 // 🔥 PILIH ROLE
-                _buildLabel("Mendaftar Sebagai"),
+                const Text("Mendaftar Sebagai", style: AppTextStyle.inputLabel),
+                const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: selectedRole,
                   icon: const Icon(
                     Icons.keyboard_arrow_down,
-                    color: Colors.grey,
+                    color: AppColor.textGrey,
                   ),
-                  decoration: _buildInputDecoration(
-                    "Pilih Peran",
-                    Icons.group_outlined,
+                  decoration: InputDecoration(
+                    hintText: "Pilih Peran",
+                    hintStyle: const TextStyle(color: AppColor.textGrey),
+                    prefixIcon: const Icon(
+                      Icons.group_outlined,
+                      color: AppColor.textGrey,
+                    ),
+                    filled: true,
+                    fillColor: AppColor.bgWhite,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColor.borderGrey),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColor.borderGrey),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColor.primaryGreen,
+                        width: 2,
+                      ),
+                    ),
                   ),
                   items: const [
                     DropdownMenuItem(
@@ -213,29 +190,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     setState(() => selectedRole = value!);
                   },
                 ),
+                const SizedBox(height: 20),
 
                 // 🔥 NAMA LENGKAP
-                _buildLabel("Nama Lengkap"),
-                TextFormField(
+                const Text("Nama Lengkap", style: AppTextStyle.inputLabel),
+                const SizedBox(height: 8),
+                CustomTextField(
                   controller: nameController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: _buildInputDecoration(
-                    "Masukkan nama lengkap",
-                    Icons.person_outline,
-                  ),
+                  hintText: "Masukkan nama lengkap",
+                  prefixIcon: Icons.person_outline,
                   validator: (v) =>
                       v == null || v.isEmpty ? "Nama wajib diisi" : null,
                 ),
+                const SizedBox(height: 20),
 
                 // 🔥 EMAIL
-                _buildLabel("Alamat Email"),
-                TextFormField(
+                const Text("Alamat Email", style: AppTextStyle.inputLabel),
+                const SizedBox(height: 8),
+                CustomTextField(
                   controller: emailController,
+                  hintText: "Contoh: nama@email.com",
+                  prefixIcon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: _buildInputDecoration(
-                    "Contoh: nama@email.com",
-                    Icons.email_outlined,
-                  ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return "Email wajib diisi";
                     if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) {
@@ -244,86 +220,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
+                const SizedBox(height: 20),
 
                 // 🔥 NO HP
-                _buildLabel("Nomor Handphone"),
-                TextFormField(
+                const Text("Nomor Handphone", style: AppTextStyle.inputLabel),
+                const SizedBox(height: 8),
+                CustomTextField(
                   controller: phoneController,
+                  hintText: "Contoh: 08123456789",
+                  prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
-                  decoration: _buildInputDecoration(
-                    "Contoh: 08123456789",
-                    Icons.phone_outlined,
-                  ),
                   validator: (v) => v == null || v.length < 10
                       ? "No HP minimal 10 angka"
                       : null,
                 ),
+                const SizedBox(height: 20),
 
-                // 🔥 PASSWORD DENGAN ICON MATA
-                _buildLabel("Password"),
-                TextFormField(
+                // 🔥 PASSWORD
+                const Text("Password", style: AppTextStyle.inputLabel),
+                const SizedBox(height: 8),
+                CustomTextField(
                   controller: passwordController,
-                  obscureText: isPasswordHidden,
-                  decoration: InputDecoration(
-                    hintText: "Buat password (minimal 6 karakter)",
-                    hintStyle: TextStyle(color: Colors.grey[400]),
-                    prefixIcon: const Icon(
-                      Icons.lock_outline,
-                      color: Colors.grey,
+                  hintText: "Buat password (minimal 6 karakter)",
+                  prefixIcon: Icons.lock_outline,
+                  isPassword: isPasswordHidden,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      isPasswordHidden
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: AppColor.textGrey,
                     ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        isPasswordHidden
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                        color: Colors.grey,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          isPasswordHidden = !isPasswordHidden;
-                        });
-                      },
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: primaryGreen, width: 2),
-                    ),
+                    onPressed: () {
+                      setState(() {
+                        isPasswordHidden = !isPasswordHidden;
+                      });
+                    },
                   ),
                   validator: (v) =>
                       v == null || v.length < 6 ? "Minimal 6 karakter" : null,
                 ),
+                const SizedBox(height: 20),
 
                 // ==========================
                 // 🔥 FORM KHUSUS IBU
                 // ==========================
                 if (selectedRole == 'ibu') ...[
-                  _buildLabel("Alamat Lengkap"),
-                  TextFormField(
+                  const Text("Alamat Lengkap", style: AppTextStyle.inputLabel),
+                  const SizedBox(height: 8),
+                  CustomTextField(
                     controller: addressController,
-                    decoration: _buildInputDecoration(
-                      "Masukkan alamat domisili",
-                      Icons.home_outlined,
-                    ),
+                    hintText: "Masukkan alamat domisili",
+                    prefixIcon: Icons.home_outlined,
                   ),
-                  _buildLabel("Jumlah Anak"),
-                  TextFormField(
+                  const SizedBox(height: 20),
+
+                  const Text("Jumlah Anak", style: AppTextStyle.inputLabel),
+                  const SizedBox(height: 8),
+                  CustomTextField(
                     controller: childrenCountController,
+                    hintText: "Contoh: 1",
+                    prefixIcon: Icons.child_care,
                     keyboardType: TextInputType.number,
-                    decoration: _buildInputDecoration(
-                      "Contoh: 1",
-                      Icons.child_care,
-                    ),
                   ),
                 ],
 
@@ -331,75 +289,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // 🔥 FORM KHUSUS KADER
                 // ==========================
                 if (selectedRole == 'kader') ...[
-                  _buildLabel("Nama Posyandu"),
-                  TextFormField(
+                  const Text("Nama Posyandu", style: AppTextStyle.inputLabel),
+                  const SizedBox(height: 8),
+                  CustomTextField(
                     controller: posyanduController,
-                    decoration: _buildInputDecoration(
-                      "Contoh: Posyandu Melati 1",
-                      Icons.local_hospital_outlined,
-                    ),
+                    hintText: "Contoh: Posyandu Melati 1",
+                    prefixIcon: Icons.local_hospital_outlined,
                   ),
-                  _buildLabel("Kode Verifikasi Kader"),
-                  TextFormField(
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    "Kode Verifikasi Kader",
+                    style: AppTextStyle.inputLabel,
+                  ),
+                  const SizedBox(height: 8),
+                  CustomTextField(
                     controller: codeController,
-                    decoration: _buildInputDecoration(
-                      "Masukkan kode khusus kader",
-                      Icons.admin_panel_settings_outlined,
-                    ),
+                    hintText: "Masukkan kode khusus kader",
+                    prefixIcon: Icons.admin_panel_settings_outlined,
                   ),
                 ],
 
                 const SizedBox(height: 40),
 
                 // 🔥 TOMBOL DAFTAR
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : handleRegister,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryGreen,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2.5,
-                            ),
-                          )
-                        : const Text(
-                            "Daftar Sekarang",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
+                CustomButton(
+                  text: "Daftar Sekarang",
+                  onPressed: handleRegister,
+                  isLoading: isLoading,
                 ),
-
                 const SizedBox(height: 30),
 
                 // 🔥 TEKS SUDAH PUNYA AKUN
                 Center(
                   child: GestureDetector(
-                    onTap: () =>
-                        Navigator.pop(context), // Kembali ke Halaman Login
+                    onTap: () => Navigator.pop(context),
                     child: RichText(
-                      text: TextSpan(
+                      text: const TextSpan(
                         text: "Sudah punya akun? ",
-                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                        style: TextStyle(
+                          color: AppColor.textGrey,
+                          fontSize: 14,
+                        ),
                         children: [
                           TextSpan(
                             text: "Masuk di sini",
                             style: TextStyle(
-                              color: primaryGreen,
+                              color: AppColor.primaryGreen,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

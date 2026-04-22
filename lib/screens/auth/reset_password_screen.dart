@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 
+// 🔥 Import Sistem Tema & Custom Widgets
+import '../../theme/app_color.dart';
+import '../../theme/app_text_style.dart';
+import '../../widgets/custom_text_field.dart';
+import '../../widgets/custom_button.dart';
+
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
 
@@ -39,42 +45,65 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() => isLoading = true);
 
     try {
+      // Memanggil fungsi dari AuthService yang memicu Firebase sendPasswordResetEmail
       await _authService.resetPassword(email);
 
       if (!mounted) return;
 
       showSuccessDialog();
     } catch (e) {
-      showMessage(e.toString());
+      showMessage(e.toString().replaceAll("Exception: ", ""));
     }
 
-    setState(() => isLoading = false);
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
   }
 
   // ==========================
   // 🔥 UI FEEDBACK
   // ==========================
   void showMessage(String msg) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: AppColor.errorRed),
+    );
   }
 
   void showSuccessDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false, // User harus menekan tombol OK
       builder: (_) => AlertDialog(
-        title: const Text("Berhasil"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.check_circle_outline,
+              color: AppColor.primaryGreen,
+              size: 28,
+            ),
+            SizedBox(width: 8),
+            Text("Berhasil", style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: const Text(
-          "Link reset password sudah dikirim ke email.\n\nSilakan cek inbox atau folder spam.",
+          "Link reset password telah dikirim ke email Anda.\n\nSilakan cek kotak masuk (inbox) atau folder spam untuk membuat password baru.",
+          style: TextStyle(color: AppColor.textBlack, height: 1.5),
         ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // close dialog
-              Navigator.pop(context); // back ke login
+              Navigator.pop(context); // Tutup dialog
+              Navigator.pop(context); // Kembali ke halaman Login
             },
-            child: const Text("OK"),
+            child: const Text(
+              "Kembali ke Login",
+              style: TextStyle(
+                color: AppColor.primaryGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
           ),
         ],
       ),
@@ -82,47 +111,57 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 
   // ==========================
-  // 🔥 UI
+  // 🔥 TAMPILAN UI (REFACTORED)
   // ==========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Reset Password")),
+      backgroundColor: AppColor.bgWhite,
+      appBar: AppBar(
+        backgroundColor: AppColor.bgWhite,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColor.textBlack),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
 
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-
-            const Text(
-              "Masukkan email untuk reset password",
-              style: TextStyle(fontSize: 16),
-            ),
-
-            const SizedBox(height: 20),
-
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(
-                labelText: "Email",
-                prefixIcon: Icon(Icons.email),
+              // 🔥 HEADER
+              const Text("Lupa Password?", style: AppTextStyle.heading1),
+              const SizedBox(height: 8),
+              const Text(
+                "Masukkan alamat email yang terdaftar pada akun GrowPosy Anda. Kami akan mengirimkan instruksi untuk mengatur ulang password.",
+                style: AppTextStyle.bodyText,
               ),
-            ),
+              const SizedBox(height: 40),
 
-            const SizedBox(height: 20),
-
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: isLoading ? null : handleReset,
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Kirim Email Reset"),
+              // 🔥 INPUT EMAIL
+              const Text("Alamat Email", style: AppTextStyle.inputLabel),
+              const SizedBox(height: 8),
+              CustomTextField(
+                controller: emailController,
+                hintText: "Contoh: nama@email.com",
+                prefixIcon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
               ),
-            ),
-          ],
+
+              const SizedBox(height: 40),
+
+              // 🔥 TOMBOL KIRIM
+              CustomButton(
+                text: "Kirim Email Reset",
+                onPressed: handleReset,
+                isLoading: isLoading,
+              ),
+            ],
+          ),
         ),
       ),
     );
