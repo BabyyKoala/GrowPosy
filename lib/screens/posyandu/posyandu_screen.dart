@@ -14,37 +14,53 @@ class PosyanduScreen extends StatefulWidget {
 class _PosyanduScreenState extends State<PosyanduScreen> {
   String searchQuery = '';
 
-  // 🔥 Data Lokasi Posyandu (Nantinya bisa ditarik dari Firestore)
+  // 🔥 FITUR BARU: Data diperkaya dengan Jam Buka, Kegiatan, dan Kontak Kader
   final List<Map<String, String>> posyanduList = [
     {
       'nama': 'Posyandu Mawar',
       'alamat': 'Jl. Melati No. 12, Desa Sukamaju',
       'jarak': '0.5 km',
       'status': 'Buka Besok',
+      'jam_buka': '08:00 - 11:30 WIB',
+      'kegiatan': 'Imunisasi Dasar & Timbang Berat Badan',
+      'kader': 'Ibu Siti Khadijah',
+      'telepon': '081234567890',
     },
     {
       'nama': 'Posyandu Melati',
       'alamat': 'Jl. Anggrek No. 45, Desa Sukamaju',
       'jarak': '1.2 km',
       'status': 'Tutup',
+      'jam_buka': '09:00 - 12:00 WIB',
+      'kegiatan': 'Pemberian Vitamin A & Cek Stunting',
+      'kader': 'Ibu Ratnasari',
+      'telepon': '085678901234',
     },
     {
       'nama': 'Posyandu Kenanga',
       'alamat': 'Jl. Dahlia No. 03, Desa Mekar',
       'jarak': '2.8 km',
       'status': 'Tutup',
+      'jam_buka': '08:30 - 11:00 WIB',
+      'kegiatan': 'Timbang Berat Badan & Edukasi MPASI',
+      'kader': 'Ibu Fatimah',
+      'telepon': '082134567891',
     },
     {
       'nama': 'Posyandu Cempaka',
       'alamat': 'Jl. Flamboyan No. 10, Desa Mekar',
       'jarak': '3.1 km',
       'status': 'Buka Besok',
+      'jam_buka': '08:00 - 12:00 WIB',
+      'kegiatan': 'Imunisasi Campak & Cek Ibu Hamil',
+      'kader': 'Bidan Ayu',
+      'telepon': '081198765432',
     },
   ];
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 Logika Filter Pencarian
+    // Logika Filter Pencarian
     final filteredList = posyanduList.where((posyandu) {
       return posyandu['nama']!.toLowerCase().contains(
             searchQuery.toLowerCase(),
@@ -67,12 +83,12 @@ class _PosyanduScreenState extends State<PosyanduScreen> {
                   const Text("Lokasi Posyandu", style: AppTextStyle.heading1),
                   const SizedBox(height: 8),
                   const Text(
-                    "Temukan pusat layanan kesehatan balita terdekat dari lokasi Anda.",
+                    "Temukan pusat layanan kesehatan balita terdekat beserta jadwal operasionalnya.",
                     style: AppTextStyle.bodyText,
                   ),
                   const SizedBox(height: 20),
 
-                  // 🔥 SEARCH BAR
+                  // SEARCH BAR
                   TextField(
                     onChanged: (value) => setState(() => searchQuery = value),
                     decoration: InputDecoration(
@@ -163,14 +179,20 @@ class _PosyanduScreenState extends State<PosyanduScreen> {
                                             mainAxisAlignment:
                                                 MainAxisAlignment.spaceBetween,
                                             children: [
-                                              Text(
-                                                posyandu['nama']!,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                  color: AppColor.textBlack,
+                                              Expanded(
+                                                child: Text(
+                                                  posyandu['nama']!,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                    color: AppColor.textBlack,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
+                                              const SizedBox(width: 8),
                                               Text(
                                                 posyandu['jarak']!,
                                                 style: const TextStyle(
@@ -189,6 +211,31 @@ class _PosyanduScreenState extends State<PosyanduScreen> {
                                               fontSize: 12,
                                               height: 1.3,
                                             ),
+                                          ),
+                                          const SizedBox(height: 8),
+
+                                          // 🔥 FITUR BARU: Indikator Kegiatan Singkat
+                                          Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.event_note_rounded,
+                                                size: 14,
+                                                color: AppColor.primaryGreen,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  posyandu['kegiatan']!,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: AppColor.textBlack,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           const SizedBox(height: 12),
 
@@ -223,7 +270,7 @@ class _PosyanduScreenState extends State<PosyanduScreen> {
                                                 ),
                                               ),
                                               const Text(
-                                                "Lihat Rute →",
+                                                "Lihat Detail →",
                                                 style: TextStyle(
                                                   color: AppColor.primaryGreen,
                                                   fontWeight: FontWeight.bold,
@@ -250,53 +297,191 @@ class _PosyanduScreenState extends State<PosyanduScreen> {
     );
   }
 
-  // 🔥 Dialog Detail Lokasi
+  // 🔥 FITUR BARU: Dialog Detail Lokasi yang Jauh Lebih Lengkap
   void _showLocationDetail(Map<String, String> posyandu) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Center Drag Indicator
+            Center(
+              child: Container(
+                width: 40,
+                height: 5,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+
             Text(posyandu['nama']!, style: AppTextStyle.heading1),
             const SizedBox(height: 8),
             Text(posyandu['alamat']!, style: AppTextStyle.bodyText),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Membuka Google Maps...")),
-                  );
-                },
-                icon: const Icon(Icons.directions, color: Colors.white),
-                label: const Text(
-                  "Buka di Google Maps",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+            const SizedBox(height: 20),
+
+            // Informasi Lengkap
+            _buildDetailRow(
+              Icons.access_time_filled_rounded,
+              "Jam Operasional",
+              posyandu['jam_buka']!,
+              Colors.blue,
+            ),
+            const SizedBox(height: 16),
+            _buildDetailRow(
+              Icons.vaccines_rounded,
+              "Agenda Utama",
+              posyandu['kegiatan']!,
+              Colors.orange,
+            ),
+            const SizedBox(height: 16),
+            _buildDetailRow(
+              Icons.person_pin_rounded,
+              "Penanggung Jawab",
+              posyandu['kader']!,
+              AppColor.primaryGreen,
+            ),
+
+            const SizedBox(height: 32),
+
+            // 🔥 FITUR BARU: Double Action Buttons (Maps & Telepon)
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Mengalihkan ke WhatsApp Kader..."),
+                          backgroundColor: AppColor.primaryGreen,
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.chat_rounded,
+                      color: AppColor.primaryGreen,
+                      size: 20,
+                    ),
+                    label: const Text(
+                      "Hubungi",
+                      style: TextStyle(
+                        color: AppColor.primaryGreen,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColor.primaryGreen.withOpacity(0.1),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: AppColor.primaryGreen.withOpacity(0.5),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColor.primaryGreen,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Membuka Google Maps..."),
+                          backgroundColor: Colors.indigo,
+                        ),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.directions,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    label: const Text(
+                      "Rute",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 12),
           ],
         ),
       ),
+    );
+  }
+
+  // Widget Bantuan untuk Item Detail
+  Widget _buildDetailRow(
+    IconData icon,
+    String title,
+    String value,
+    Color iconColor,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: iconColor, size: 20),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColor.textGrey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColor.textBlack,
+                  fontWeight: FontWeight.bold,
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

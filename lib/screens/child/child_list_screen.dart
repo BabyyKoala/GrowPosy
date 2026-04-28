@@ -8,11 +8,10 @@ import '../../services/firestore_service.dart';
 // 🔥 Import Screens
 import '../child/add_child_screen.dart';
 import '../growth/growth_chart_screen.dart';
-import '../growth/add_growth_screen.dart'; // Menggunakan screen input yang sudah tervalidasi
+import '../growth/add_growth_screen.dart';
 
 // 🔥 Import Tema
 import '../../theme/app_color.dart';
-import '../../theme/app_text_style.dart';
 
 class ChildListScreen extends StatelessWidget {
   const ChildListScreen({super.key});
@@ -25,27 +24,12 @@ class ChildListScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColor.bgWhite,
-      appBar: AppBar(
-        backgroundColor: AppColor.bgWhite,
-        elevation: 0,
-        title: const Text(
-          "Data Buah Hati",
-          style: TextStyle(
-            color: AppColor.textBlack,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColor.textBlack),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      appBar: AppBar(title: const Text("Data Buah Hati")),
 
       // 🔥 TOMBOL TAMBAH ANAK (FLOATING)
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColor.primaryGreen,
+        elevation: 4,
         onPressed: () {
           Navigator.push(
             context,
@@ -60,12 +44,12 @@ class ChildListScreen extends StatelessWidget {
       ),
 
       body: StreamBuilder<List<ChildModel>>(
+        // 🔥 Asumsi: firestore.getChildren() hanya mengambil data anak milik Ibu ini saja
+        // Jika belum, pastikan query Anda: collection('children').where('userId', isEqualTo: currentUserId)
         stream: firestore.getChildren(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColor.primaryGreen),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -96,7 +80,7 @@ class ChildListScreen extends StatelessWidget {
                   border: Border.all(color: AppColor.borderGrey),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
+                      color: AppColor.textBlack.withOpacity(0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -134,7 +118,8 @@ class ChildListScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                "Umur: ${child.age} Bulan",
+                                // 🔥 PENGGUNAAN FITUR BARU: calculatedAgeInMonths (Usia real-time)
+                                "Usia: ${child.calculatedAgeInMonths} Bulan",
                                 style: const TextStyle(
                                   color: AppColor.textGrey,
                                   fontSize: 13,
@@ -147,8 +132,8 @@ class ChildListScreen extends StatelessWidget {
                     ),
 
                     const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Divider(color: AppColor.borderGrey),
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Divider(color: AppColor.borderGrey, height: 1),
                     ),
 
                     // 🔥 BERAT TERAKHIR & TOMBOL AKSI
@@ -164,7 +149,7 @@ class ChildListScreen extends StatelessWidget {
                               return const Text(
                                 "Memuat data...",
                                 style: TextStyle(
-                                  color: AppColor.textGrey,
+                                  color: AppColor.textLightGrey,
                                   fontSize: 12,
                                 ),
                               );
@@ -173,7 +158,7 @@ class ChildListScreen extends StatelessWidget {
                             final weight = weightSnapshot.data;
                             if (weight == null) {
                               return const Text(
-                                "Belum ada data berat",
+                                "Belum ada data KMS",
                                 style: TextStyle(
                                   color: AppColor.textGrey,
                                   fontSize: 12,
@@ -197,7 +182,7 @@ class ChildListScreen extends StatelessWidget {
                                   style: const TextStyle(
                                     color: AppColor.primaryGreen,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize: 18,
                                   ),
                                 ),
                               ],
@@ -208,7 +193,6 @@ class ChildListScreen extends StatelessWidget {
                         // Tombol Aksi
                         Row(
                           children: [
-                            // Tombol Input Mandiri (Jika Ibu ingin input sendiri)
                             IconButton(
                               onPressed: () {
                                 Navigator.push(
@@ -216,9 +200,8 @@ class ChildListScreen extends StatelessWidget {
                                   MaterialPageRoute(
                                     builder: (_) => AddGrowthScreen(
                                       childId: child.id,
-                                      userId: currentUserId, // Mengirim ID Ibu
-                                      childName:
-                                          child.name, // Mengirim Nama Anak
+                                      userId: currentUserId,
+                                      childName: child.name,
                                     ),
                                   ),
                                 );
@@ -227,10 +210,8 @@ class ChildListScreen extends StatelessWidget {
                                 Icons.add_chart_rounded,
                                 color: Colors.blue,
                               ),
-                              tooltip: "Input Pertumbuhan Mandiri",
+                              tooltip: "Input Pertumbuhan",
                             ),
-
-                            // Tombol Lihat Grafik KMS
                             Container(
                               decoration: BoxDecoration(
                                 color: AppColor.primaryGreen.withOpacity(0.1),
@@ -243,7 +224,8 @@ class ChildListScreen extends StatelessWidget {
                                     MaterialPageRoute(
                                       builder: (_) => GrowthChartScreen(
                                         childId: child.id,
-                                        age: child.age,
+                                        age: child
+                                            .calculatedAgeInMonths, // Gunakan usia dinamis
                                       ),
                                     ),
                                   );
@@ -277,18 +259,18 @@ class ChildListScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColor.borderGrey.withOpacity(0.5),
+              color: AppColor.borderGrey.withOpacity(0.3),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.child_care_rounded,
               size: 64,
-              color: AppColor.textGrey,
+              color: AppColor.textLightGrey,
             ),
           ),
           const SizedBox(height: 16),
           const Text(
-            "Belum ada data anak.\nSilakan tekan tombol tambah di bawah.",
+            "Belum ada data anak.\nSilakan ketuk tombol Tambah di bawah.",
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColor.textGrey, height: 1.5),
           ),

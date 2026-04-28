@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // 🔥 WAJIB: Untuk mengetahui Ibu mana yang login
 import '../../services/firestore_service.dart';
 
 // 🔥 Import Sistem Tema & Custom Widgets
@@ -18,9 +20,12 @@ class _AddChildScreenState extends State<AddChildScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final nameController = TextEditingController();
-  final ageController = TextEditingController();
+  final weightController = TextEditingController();
+  final heightController = TextEditingController();
 
-  // 🔥 Default value 'L' atau 'P' sesuai logika UI di Home
+  DateTime? selectedDate;
+  int calculatedAge = 0;
+
   String selectedGender = 'L';
   bool isLoading = false;
 
@@ -29,44 +34,100 @@ class _AddChildScreenState extends State<AddChildScreen> {
   @override
   void dispose() {
     nameController.dispose();
-    ageController.dispose();
+    weightController.dispose();
+    heightController.dispose();
     super.dispose();
   }
 
   // ==========================
-  // ⚙️ LOGIKA SIMPAN DATA
+  // ⚙️ LOGIKA PILIH TANGGAL
+  // ==========================
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2018), // Batas balita
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColor.primaryGreen,
+              onPrimary: Colors.white,
+              onSurface: AppColor.textBlack,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+        final days = DateTime.now().difference(picked).inDays;
+        calculatedAge = (days / 30.44).floor();
+      });
+    }
+  }
+
+  // ==========================
+  // ⚙️ LOGIKA SIMPAN DATA (UPGRADED)
   // ==========================
   void save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Tanggal lahir wajib diisi!"),
+          backgroundColor: AppColor.errorRed,
+        ),
+      );
+      return;
+    }
 
     setState(() => isLoading = true);
 
     try {
-      // Membersihkan input umur: mencegah desimal menyebabkan parsing gagal (menjadi 0)
-      String cleanAgeString = ageController.text.trim().replaceAll(',', '.');
-      // Jika user ketik 12.5, kita ambil '12' saja
-      int parsedAge = int.tryParse(cleanAgeString.split('.')[0]) ?? 0;
+      // 🔥 1. Dapatkan ID Ibu yang sedang menggunakan aplikasi
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null)
+        throw Exception("Sesi login tidak valid. Silakan login ulang.");
 
+      // Bersihkan koma menjadi titik untuk desimal
+      double? birthWeight = double.tryParse(
+        weightController.text.trim().replaceAll(',', '.'),
+      );
+      double? birthHeight = double.tryParse(
+        heightController.text.trim().replaceAll(',', '.'),
+      );
+
+      // 🔥 2. Kirim data lengkap ke Firestore (Pastikan fungsi addChild di Service diperbarui juga)
       await firestore.addChild(
+        userId: currentUser.uid, // Sangat Penting!
         name: nameController.text.trim(),
-        age: parsedAge,
+        birthDate: selectedDate!, // Kirim objek tanggalnya langsung
+        age: calculatedAge, // Usia statis saat didaftarkan
         gender: selectedGender,
+        birthWeight: birthWeight,
+        birthHeight: birthHeight,
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Data anak berhasil ditambahkan!"),
+          content: Text("Profil buah hati berhasil dibuat! 🎉"),
           backgroundColor: AppColor.primaryGreen,
+          behavior: SnackBarBehavior.floating,
         ),
       );
 
-      Navigator.pop(context); // Kembali ke Home Ibu
+      Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Gagal menyimpan data: $e"),
+          content: Text("Gagal menyimpan: $e"),
           backgroundColor: AppColor.errorRed,
         ),
       );
@@ -85,22 +146,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
     return Scaffold(
       backgroundColor: AppColor.bgWhite,
       appBar: AppBar(
-        backgroundColor: AppColor.bgWhite,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColor.textBlack),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Tambah Anak",
-          style: TextStyle(
-            color: AppColor.textBlack,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-      ),
+        title: const Text("Tambah Data Anak"),
+      ), // Styling AppBar otomatis ikut AppTheme global
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
@@ -110,121 +157,248 @@ class _AddChildScreenState extends State<AddChildScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🔥 HEADER & ILUSTRASI
+                // HEADER FOTO AVATAR
                 Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColor.primaryGreen.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.child_care_rounded,
-                      size: 64,
-                      color: AppColor.primaryGreen,
-                    ),
+                  child: Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColor.primaryGreen.withOpacity(0.3),
+                            width: 2,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 45,
+                          backgroundColor: selectedGender == 'L'
+                              ? Colors.blue[50]
+                              : Colors.pink[50],
+                          child: Icon(
+                            selectedGender == 'L' ? Icons.face : Icons.face_3,
+                            size: 50,
+                            color: selectedGender == 'L'
+                                ? Colors.blue
+                                : Colors.pink,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColor.primaryGreen,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
-                const Center(
-                  child: Text("Profil Buah Hati", style: AppTextStyle.heading1),
-                ),
-                const SizedBox(height: 8),
-                const Center(
-                  child: Text(
-                    "Lengkapi data di bawah ini untuk mulai memantau grafik KMS si kecil secara digital.",
-                    textAlign: TextAlign.center,
-                    style: AppTextStyle.bodyText,
-                  ),
-                ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
 
-                // 🔥 INPUT NAMA
-                const Text("Nama Lengkap Anak", style: AppTextStyle.inputLabel),
+                // SECTION 1: IDENTITAS UTAMA
+                const Text("Informasi Dasar", style: AppTextStyle.heading3),
+                const Divider(),
+                const SizedBox(height: 12),
+
+                const Text("Nama Lengkap", style: AppTextStyle.inputLabel),
                 const SizedBox(height: 8),
                 CustomTextField(
                   controller: nameController,
                   hintText: "Contoh: Budi Santoso",
                   prefixIcon: Icons.person_outline,
+                  textCapitalization:
+                      TextCapitalization.words, // Otomatis Huruf Kapital
                   validator: (value) {
                     if (value == null || value.trim().isEmpty)
-                      return "Nama anak wajib diisi";
+                      return "Nama wajib diisi";
                     if (value.length < 2) return "Nama terlalu pendek";
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
 
-                // 🔥 INPUT UMUR (BULAN)
-                const Text(
-                  "Umur Saat Ini (Bulan)",
-                  style: AppTextStyle.inputLabel,
-                ),
+                // JENIS KELAMIN
+                const Text("Jenis Kelamin", style: AppTextStyle.inputLabel),
                 const SizedBox(height: 8),
-                CustomTextField(
-                  controller: ageController,
-                  hintText: "Contoh: 12",
-                  prefixIcon: Icons.cake_outlined,
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty)
-                      return "Umur wajib diisi";
-                    // Antisipasi ketidaksengajaan input koma/titik
-                    String cleanVal = value.replaceAll(',', '.').split('.')[0];
-                    if (int.tryParse(cleanVal) == null)
-                      return "Masukkan angka yang valid";
-                    if (int.parse(cleanVal) > 60)
-                      return "Posyandu maksimal melayani usia 60 bulan";
-                    return null;
-                  },
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildGenderCard(
+                        "L",
+                        "Laki-laki",
+                        Icons.male_rounded,
+                        Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildGenderCard(
+                        "P",
+                        "Perempuan",
+                        Icons.female_rounded,
+                        Colors.pink,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
 
-                // 🔥 INPUT JENIS KELAMIN
-                const Text("Jenis Kelamin", style: AppTextStyle.inputLabel),
+                // DATE PICKER TANGGAL LAHIR
+                const Text("Tanggal Lahir", style: AppTextStyle.inputLabel),
                 const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: selectedGender,
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: AppColor.textGrey,
-                  ),
-                  decoration: InputDecoration(
-                    prefixIcon: Icon(
-                      selectedGender == 'L' ? Icons.face : Icons.face_3,
-                      color: AppColor.textGrey,
-                    ),
-                    filled: true,
-                    fillColor: AppColor.bgWhite,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColor.borderGrey),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColor.borderGrey),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: AppColor.primaryGreen,
-                        width: 2,
+                InkWell(
+                  onTap: () => _selectDate(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColor.surfaceWhite,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: selectedDate == null
+                            ? AppColor.borderGrey
+                            : AppColor.primaryGreen,
                       ),
                     ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_month_rounded,
+                          color: selectedDate == null
+                              ? AppColor.textGrey
+                              : AppColor.primaryGreen,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          selectedDate == null
+                              ? "Pilih Tanggal Lahir"
+                              : DateFormat(
+                                  'dd MMMM yyyy',
+                                ).format(selectedDate!),
+                          style: TextStyle(
+                            color: selectedDate == null
+                                ? AppColor.textGrey
+                                : AppColor.textBlack,
+                            fontWeight: selectedDate == null
+                                ? FontWeight.normal
+                                : FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (selectedDate != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColor.primaryGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              "$calculatedAge Bulan",
+                              style: const TextStyle(
+                                color: AppColor.primaryGreen,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'L', child: Text('Laki-laki')),
-                    DropdownMenuItem(value: 'P', child: Text('Perempuan')),
+                ),
+                const SizedBox(height: 32),
+
+                // SECTION 2: DATA KELAHIRAN
+                const Text(
+                  "Data Lahir (Awal KMS)",
+                  style: AppTextStyle.heading3,
+                ),
+                const Divider(),
+                const SizedBox(height: 12),
+
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Berat Lahir",
+                            style: AppTextStyle.inputLabel,
+                          ),
+                          const SizedBox(height: 8),
+                          CustomTextField(
+                            controller: weightController,
+                            hintText: "Misal: 3.2",
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            suffixIcon: const Padding(
+                              padding: EdgeInsets.all(14.0),
+                              child: Text(
+                                "kg",
+                                style: TextStyle(color: AppColor.textGrey),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Panjang Lahir",
+                            style: AppTextStyle.inputLabel,
+                          ),
+                          const SizedBox(height: 8),
+                          CustomTextField(
+                            controller: heightController,
+                            hintText: "Misal: 50",
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            suffixIcon: const Padding(
+                              padding: EdgeInsets.all(14.0),
+                              child: Text(
+                                "cm",
+                                style: TextStyle(color: AppColor.textGrey),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
-                  onChanged: (value) => setState(() => selectedGender = value!),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "*Data berat dan panjang lahir penting untuk titik awal grafik pertumbuhan balita.",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColor.textGrey,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
 
                 const SizedBox(height: 50),
 
-                // 🔥 TOMBOL SIMPAN
+                // TOMBOL SIMPAN
                 CustomButton(
-                  text: "Simpan Data Anak",
+                  text: "Simpan Profil Anak",
                   onPressed: save,
                   isLoading: isLoading,
                 ),
@@ -232,6 +406,43 @@ class _AddChildScreenState extends State<AddChildScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderCard(
+    String value,
+    String title,
+    IconData icon,
+    Color color,
+  ) {
+    bool isSelected = selectedGender == value;
+    return GestureDetector(
+      onTap: () => setState(() => selectedGender = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? color : AppColor.borderGrey,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? color : AppColor.textGrey, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                color: isSelected ? color : AppColor.textGrey,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );

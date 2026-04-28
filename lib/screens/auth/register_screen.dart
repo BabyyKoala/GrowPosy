@@ -49,23 +49,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   // ==========================
-  // ⚙️ LOGIKA BACKEND (TIDAK DIUBAH)
+  // ⚙️ LOGIKA REGISTRASI & VALIDASI KADER
   // ==========================
   void handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // 🔥 LOGIKA KUNCI: Validasi "KADER-SIAGA" langsung di sisi aplikasi
+    if (selectedRole == 'kader') {
+      final inputCode = codeController.text.trim().toUpperCase();
+      if (inputCode != 'KADER-SIAGA') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Kode akses Kader tidak valid!"),
+            backgroundColor: AppColor.errorRed,
+          ),
+        );
+        return; // Hentikan proses, jangan lanjut ke Firebase
+      }
+    }
+
     setState(() => isLoading = true);
 
     try {
-      if (selectedRole == 'kader') {
-        bool isCodeValid = await _authService.verifyInviteCode(
-          codeController.text,
-        );
-        if (!isCodeValid) {
-          throw Exception("Kode kader tidak valid atau sudah digunakan");
-        }
-      }
-
-      // 🔥 Mengirim SEMUA data ke AuthService
+      // 🔥 Mengirim data ke AuthService
       final user = await _authService.register(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
@@ -79,7 +85,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         posyanduName: selectedRole == 'kader'
             ? posyanduController.text.trim()
             : null,
-        inviteCode: selectedRole == 'kader' ? codeController.text.trim() : null,
+        inviteCode: selectedRole == 'kader'
+            ? codeController.text.trim().toUpperCase()
+            : null,
       );
 
       if (user != null && mounted) {
@@ -98,12 +106,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
           backgroundColor: AppColor.errorRed,
         ),
       );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
-    setState(() => isLoading = false);
   }
 
   // ==========================
-  // 🎨 TAMPILAN UI (PEMBARUAN LOGO)
+  // 🎨 TAMPILAN UI
   // ==========================
   @override
   Widget build(BuildContext context) {
@@ -120,18 +129,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          physics: const BouncingScrollPhysics(),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🔥 PEMBARUAN: LOGO TEKS GROWPOSY
                 Image.asset(
                   'assets/images/logo_teks.png',
-                  height: 45,
+                  height: 35,
                   fit: BoxFit.contain,
                 ),
-
                 const SizedBox(height: 30),
                 const Text("Buat Akun Baru", style: AppTextStyle.heading1),
                 const SizedBox(height: 8),
@@ -187,7 +195,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ],
                   onChanged: (value) {
-                    setState(() => selectedRole = value!);
+                    setState(() {
+                      selectedRole = value!;
+                      // Bersihkan input kader kalau pindah ke ibu
+                      if (selectedRole == 'ibu') codeController.clear();
+                    });
                   },
                 ),
                 const SizedBox(height: 20),
@@ -214,9 +226,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                   validator: (v) {
                     if (v == null || v.isEmpty) return "Email wajib diisi";
-                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v)) {
+                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v))
                       return "Format email tidak valid";
-                    }
                     return null;
                   },
                 ),
@@ -251,11 +262,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           : Icons.visibility,
                       color: AppColor.textGrey,
                     ),
-                    onPressed: () {
-                      setState(() {
-                        isPasswordHidden = !isPasswordHidden;
-                      });
-                    },
+                    onPressed: () =>
+                        setState(() => isPasswordHidden = !isPasswordHidden),
                   ),
                   validator: (v) =>
                       v == null || v.length < 6 ? "Minimal 6 karakter" : null,
@@ -305,8 +313,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 8),
                   CustomTextField(
                     controller: codeController,
-                    hintText: "Masukkan kode khusus kader",
+                    hintText: "Masukkan kode: KADER-SIAGA",
                     prefixIcon: Icons.admin_panel_settings_outlined,
+                    textCapitalization: TextCapitalization.characters,
                   ),
                 ],
 

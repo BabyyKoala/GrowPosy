@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 // 🔥 Import Service
 import '../../services/firestore_service.dart';
@@ -12,6 +14,7 @@ import '../../widgets/custom_card.dart';
 import '../../widgets/custom_text_field.dart';
 
 import '../growth/add_growth_screen.dart';
+import '../posyandu/laporan_bulanan_screen.dart'; // 🔥 IMPORT BARU
 
 class HomeKaderScreen extends StatefulWidget {
   const HomeKaderScreen({super.key});
@@ -24,7 +27,9 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
   int _selectedIndex = 0;
   String searchQuery = '';
 
-  // 🔥 Deklarasi Service dan Stream di tingkat State
+  // 🔥 TAMBAHAN: Controller agar teks pencarian tidak hilang saat pindah tab
+  final TextEditingController _searchController = TextEditingController();
+
   late final FirestoreService _firestore;
   late final Stream<int> _totalChildrenStream;
   late final Stream<List<Map<String, dynamic>>> _childrenStream;
@@ -33,11 +38,16 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
   @override
   void initState() {
     super.initState();
-    // 🔥 Inisialisasi Firebase HANYA SATU KALI saat layar pertama kali dibuka
     _firestore = FirestoreService();
     _totalChildrenStream = _firestore.getTotalAllChildren();
     _childrenStream = _firestore.getAllChildrenForKader();
     _jadwalStream = _firestore.getJadwal();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -49,13 +59,64 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
       _buildProfileTab(),
     ];
 
-    return Scaffold(
-      backgroundColor: AppColor.bgWhite,
-      body: Stack(
-        children: [
-          IndexedStack(index: _selectedIndex, children: pages),
-          _buildFloatingNavBar(),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              "Keluar Aplikasi?",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: const Text(
+              "Apakah Anda yakin ingin menutup aplikasi GrowPosy?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  "Batal",
+                  style: TextStyle(color: AppColor.textGrey),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColor.errorRed,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  "Keluar",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColor.bgWhite,
+        body: Stack(
+          children: [
+            IndexedStack(index: _selectedIndex, children: pages),
+            _buildFloatingNavBar(),
+          ],
+        ),
       ),
     );
   }
@@ -71,7 +132,7 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
           left: 24,
           right: 24,
           top: 10,
-          bottom: 120,
+          bottom: 120, // Menghindari tertutup navbar
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,7 +155,6 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                         color: Colors.blue,
                       );
                     }
-                    // 🔥 Deteksi error jika gagal memuat total
                     if (snapshot.hasError) {
                       return _buildStatBox(
                         value: "!",
@@ -135,9 +195,10 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
-                      "Silakan cari nama anak lalu tekan tombol 'Input'",
+                      "🔍 Silakan cari nama anak lalu tekan tombol 'Input'",
                     ),
                     backgroundColor: AppColor.primaryGreen,
+                    behavior: SnackBarBehavior.floating,
                   ),
                 );
               },
@@ -146,7 +207,7 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
 
             CustomCard(
               title: "Kirim Pengumuman",
-              subtitle: "Broadcast pesan ke para ibu",
+              subtitle: "Broadcast pesan ke HP para ibu",
               icon: Icons.campaign_rounded,
               color: Colors.indigo,
               onTap: () => _showPengumumanBottomSheet(context),
@@ -155,10 +216,16 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
 
             CustomCard(
               title: "Laporan Bulanan",
-              subtitle: "Unduh rekapitulasi Excel/PDF",
+              subtitle: "Lihat dan unduh rekap data",
               icon: Icons.description_rounded,
               color: AppColor.errorRed,
-              onTap: () => _showExportBottomSheet(context),
+              onTap: () {
+                // 🔥 Pindah ke Layar Laporan yang baru kita buat
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LaporanBulananScreen()),
+                );
+              },
             ),
 
             const SizedBox(height: 32),
@@ -184,6 +251,7 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
             child: TextField(
+              controller: _searchController, // Menggunakan controller
               onChanged: (value) =>
                   setState(() => searchQuery = value.toLowerCase()),
               decoration: InputDecoration(
@@ -219,7 +287,6 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                   );
                 }
 
-                // 🔥 PERBAIKAN: Tangkap Error Firestore agar tidak tersembunyi
                 if (snapshot.hasError) {
                   return Center(
                     child: Padding(
@@ -256,7 +323,6 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                   );
                 }
 
-                // Filter data berdasarkan pencarian
                 final children = snapshot.data!.where((child) {
                   final name = (child['name'] ?? 'Tanpa Nama')
                       .toString()
@@ -279,16 +345,14 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                     left: 24,
                     right: 24,
                     top: 10,
-                    bottom: 120,
+                    bottom: 120, // Menghindari tertutup navbar
                   ),
                   itemCount: children.length,
                   itemBuilder: (context, index) {
                     final child = children[index];
                     final isBoy = child['gender'] == 'L';
-                    final childName = child['name'] ?? 'Tanpa Nama';
-                    final childAge = child['age'] ?? 0;
-
-                    // Fallback aman untuk ID agar tidak error saat dioper ke AddGrowthScreen
+                    final childName = child['name']?.toString() ?? 'Tanpa Nama';
+                    final childAge = child['age']?.toString() ?? '0';
                     final childId = child['id']?.toString() ?? '';
                     final userId = child['userId']?.toString() ?? '';
 
@@ -313,6 +377,8 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                         ),
                         title: Text(
                           childName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -327,15 +393,16 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                         ),
                         trailing: ElevatedButton(
                           onPressed: () {
-                            if (childId.isEmpty) {
+                            if (childId.isEmpty || userId.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text("Data ID Anak tidak valid!"),
+                                  backgroundColor: AppColor.errorRed,
                                 ),
                               );
                               return;
                             }
-
+                            // Buka AddGrowthScreen untuk input data
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -440,7 +507,6 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                     ),
                   );
                 }
-
                 if (snapshot.hasError) {
                   return Center(
                     child: Text(
@@ -451,7 +517,6 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                 }
 
                 final jadwalListFromDb = snapshot.data ?? [];
-
                 if (jadwalListFromDb.isEmpty) {
                   return const Center(
                     child: Text(
@@ -466,12 +531,12 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                   padding: const EdgeInsets.only(
                     left: 24,
                     right: 24,
-                    bottom: 100,
+                    bottom: 100, // Hindari navbar
                   ),
                   itemCount: jadwalListFromDb.length,
                   itemBuilder: (context, index) {
                     final jadwal = jadwalListFromDb[index];
-                    final isNext = index == 0;
+                    final isNext = index == 0; // Highlight jadwal teratas
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 16),
@@ -515,7 +580,7 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                             child: Column(
                               children: [
                                 Text(
-                                  jadwal['tanggal'] ?? '-',
+                                  jadwal['tanggal']?.toString() ?? '-',
                                   style: TextStyle(
                                     color: isNext
                                         ? AppColor.primaryGreen
@@ -525,7 +590,7 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                                   ),
                                 ),
                                 Text(
-                                  jadwal['bulan'] ?? '-',
+                                  jadwal['bulan']?.toString() ?? '-',
                                   style: TextStyle(
                                     color: isNext
                                         ? AppColor.primaryGreen
@@ -554,7 +619,7 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    jadwal['status'] ?? 'Terjadwal',
+                                    jadwal['status']?.toString() ?? 'Terjadwal',
                                     style: TextStyle(
                                       color: isNext
                                           ? Colors.orange
@@ -566,7 +631,7 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  jadwal['lokasi'] ?? '-',
+                                  jadwal['lokasi']?.toString() ?? '-',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
@@ -583,7 +648,7 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      jadwal['waktu'] ?? '-',
+                                      jadwal['waktu']?.toString() ?? '-',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: AppColor.textGrey,
@@ -603,7 +668,7 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
-                                        jadwal['kegiatan'] ?? '-',
+                                        jadwal['kegiatan']?.toString() ?? '-',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: AppColor.textGrey,
@@ -630,104 +695,250 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
   }
 
   // ==========================================
-  // LOGIKA TAMBAH FITUR KADER (BOTTOM SHEETS)
+  // FITUR KADER (BOTTOM SHEETS & DIALOGS)
   // ==========================================
 
   void _showAddJadwalBottomSheet(BuildContext context) {
-    final tglController = TextEditingController();
     final agendaController = TextEditingController();
+    final lokasiController = TextEditingController(text: "Posyandu Melati");
+    DateTime? selectedDate;
+    TimeOfDay? selectedTime;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 24,
-            right: 24,
-            top: 24,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Tambah Jadwal Posyandu",
-                style: AppTextStyle.heading1,
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 24,
+                right: 24,
+                top: 24,
               ),
-              const SizedBox(height: 24),
-              const Text(
-                "Tanggal (Contoh: 25 Jun)",
-                style: AppTextStyle.inputLabel,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              const SizedBox(height: 8),
-              CustomTextField(
-                controller: tglController,
-                hintText: "Misal: 25 Jun",
-                prefixIcon: Icons.calendar_today_rounded,
-              ),
-              const SizedBox(height: 16),
-              const Text("Agenda Kegiatan", style: AppTextStyle.inputLabel),
-              const SizedBox(height: 8),
-              CustomTextField(
-                controller: agendaController,
-                hintText: "Contoh: Imunisasi",
-                prefixIcon: Icons.event_note_rounded,
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    if (tglController.text.isNotEmpty &&
-                        agendaController.text.isNotEmpty) {
-                      final tglArr = tglController.text.split(' ');
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Tambah Jadwal Baru",
+                    style: AppTextStyle.heading1,
+                  ),
+                  const SizedBox(height: 24),
 
-                      await _firestore.addJadwal({
-                        'tanggal': tglArr[0],
-                        'bulan': tglArr.length > 1 ? tglArr[1] : '',
-                        'lokasi': 'Posyandu Mawar',
-                        'waktu': '08:00 - 11:00 WIB',
-                        'kegiatan': agendaController.text,
-                        'status': 'Akan Datang',
-                      });
-
-                      if (!context.mounted) return;
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Jadwal berhasil ditambahkan!"),
-                          backgroundColor: AppColor.primaryGreen,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Tanggal",
+                              style: AppTextStyle.inputLabel,
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () async {
+                                final date = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime.now(),
+                                  lastDate: DateTime(2030),
+                                );
+                                if (date != null) {
+                                  setModalState(() => selectedDate = date);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.calendar_today_rounded,
+                                      color: AppColor.primaryGreen,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      selectedDate == null
+                                          ? "Pilih Tanggal"
+                                          : DateFormat(
+                                              'dd MMM yyyy',
+                                            ).format(selectedDate!),
+                                      style: TextStyle(
+                                        color: selectedDate == null
+                                            ? AppColor.textGrey
+                                            : AppColor.textBlack,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColor.primaryGreen,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Jam Mulai",
+                              style: AppTextStyle.inputLabel,
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () async {
+                                final time = await showTimePicker(
+                                  context: context,
+                                  initialTime: const TimeOfDay(
+                                    hour: 8,
+                                    minute: 0,
+                                  ),
+                                );
+                                if (time != null) {
+                                  setModalState(() => selectedTime = time);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.access_time_rounded,
+                                      color: Colors.orange,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      selectedTime == null
+                                          ? "Pilih Jam"
+                                          : "${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}", // Format aman tanpa context
+                                      style: TextStyle(
+                                        color: selectedTime == null
+                                            ? AppColor.textGrey
+                                            : AppColor.textBlack,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text("Lokasi Posyandu", style: AppTextStyle.inputLabel),
+                  const SizedBox(height: 8),
+                  CustomTextField(
+                    controller: lokasiController,
+                    hintText: "Lokasi kegiatan",
+                    prefixIcon: Icons.location_on_rounded,
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text("Agenda Kegiatan", style: AppTextStyle.inputLabel),
+                  const SizedBox(height: 8),
+                  CustomTextField(
+                    controller: agendaController,
+                    hintText: "Contoh: Imunisasi Campak & Timbang",
+                    prefixIcon: Icons.event_note_rounded,
+                  ),
+                  const SizedBox(height: 32),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (selectedDate != null &&
+                            selectedTime != null &&
+                            agendaController.text.isNotEmpty &&
+                            lokasiController.text.isNotEmpty) {
+                          String strTanggal = DateFormat(
+                            'dd',
+                          ).format(selectedDate!);
+                          String strBulan = DateFormat(
+                            'MMM',
+                          ).format(selectedDate!);
+
+                          // Format 24 Jam agar konsisten
+                          String jamFormat =
+                              "${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}";
+                          String strWaktu = "$jamFormat - Selesai";
+
+                          await _firestore.addJadwal({
+                            'tanggal': strTanggal,
+                            'bulan': strBulan,
+                            'lokasi': lokasiController.text,
+                            'waktu': strWaktu,
+                            'kegiatan': agendaController.text,
+                            'status': 'Akan Datang',
+                          });
+
+                          if (!context.mounted) return;
+                          Navigator.pop(context); // Tutup bottomsheet
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Jadwal berhasil ditambahkan!"),
+                              backgroundColor: AppColor.primaryGreen,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Harap lengkapi semua data!"),
+                              backgroundColor: AppColor.errorRed,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColor.primaryGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        "Simpan Jadwal",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    "Simpan Jadwal",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
+                  const SizedBox(height: 24),
+                ],
               ),
-              const SizedBox(height: 24),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -735,194 +946,128 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
 
   void _showPengumumanBottomSheet(BuildContext context) {
     final pesanController = TextEditingController();
+    bool isSending = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 24,
-            right: 24,
-            top: 24,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Kirim Pengumuman 📢", style: AppTextStyle.heading1),
-              const SizedBox(height: 8),
-              const Text(
-                "Pesan ini akan dikirimkan ke aplikasi seluruh Ibu di wilayah Anda.",
-                style: AppTextStyle.bodyText,
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 24,
+                right: 24,
+                top: 24,
               ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: pesanController,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: "Tulis isi pengumuman di sini...",
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Pengumuman berhasil di-broadcast ke seluruh ibu!",
-                        ),
-                        backgroundColor: Colors.indigo,
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    "Kirim Broadcast",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showExportBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Unduh Laporan", style: AppTextStyle.heading1),
-              const SizedBox(height: 8),
-              const Text(
-                "Pilih format rekapitulasi data Posyandu bulan ini.",
-                style: AppTextStyle.bodyText,
-              ),
-              const SizedBox(height: 24),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _buildExportButton(
-                      "Format Excel",
-                      Icons.table_chart_rounded,
-                      Colors.green,
-                      () {
-                        Navigator.pop(context);
-                        _simulateDownload("Excel");
-                      },
+                  const Text(
+                    "Kirim Pengumuman 📢",
+                    style: AppTextStyle.heading1,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Pesan ini akan otomatis muncul di beranda aplikasi seluruh Ibu di wilayah Anda.",
+                    style: AppTextStyle.bodyText,
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: pesanController,
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: "Contoh: Diingatkan besok jam 8 pagi ada PIN Polio di Balai Desa...",
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: Colors.indigo, width: 2),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildExportButton(
-                      "Format PDF",
-                      Icons.picture_as_pdf_rounded,
-                      AppColor.errorRed,
-                      () {
-                        Navigator.pop(context);
-                        _simulateDownload("PDF");
-                      },
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isSending
+                          ? null
+                          : () async {
+                              final pesan = pesanController.text.trim();
+                              if (pesan.isEmpty) return;
+                              
+                              setModalState(() => isSending = true);
+
+                              try {
+                                // 🔥 KONEKSI KE FIREBASE
+                                await _firestore.sendPengumuman(pesan);
+
+                                if (!context.mounted) return;
+                                Navigator.pop(context); // Tutup bottomsheet
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("✅ Pengumuman berhasil disebarkan!"),
+                                    backgroundColor: Colors.indigo,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(e.toString()),
+                                    backgroundColor: AppColor.errorRed,
+                                  ),
+                                );
+                                setModalState(() => isSending = false);
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: isSending
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              "Kirim Broadcast",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                     ),
                   ),
+                  const SizedBox(height: 24),
                 ],
               ),
-              const SizedBox(height: 24),
-            ],
-          ),
+            );
+          },
         );
       },
     );
-  }
-
-  Widget _buildExportButton(
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _simulateDownload(String format) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Menyiapkan file $format..."),
-        duration: const Duration(seconds: 1),
-      ),
-    );
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "✅ Laporan Posyandu_$format berhasil diunduh ke HP Anda!",
-          ),
-          backgroundColor: AppColor.primaryGreen,
-        ),
-      );
-    });
   }
 
   // ==========================================
@@ -955,17 +1100,23 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
               style: AppTextStyle.bodyText,
             ),
             const SizedBox(height: 40),
-            _buildProfileMenu(Icons.person_outline, "Informasi Akun", () {}),
+
+            _buildProfileMenu(
+              Icons.person_outline,
+              "Informasi Akun",
+              () => _showAccountInfoDialog(user?.email),
+            ),
             _buildProfileMenu(
               Icons.security_outlined,
               "Ubah Kode Undangan Kader",
-              () {},
+              () => _showKodeUndanganDialog(),
             ),
             _buildProfileMenu(
               Icons.help_outline_rounded,
               "Pusat Bantuan",
-              () {},
+              () => _showHelpCenter(),
             ),
+
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
               child: Divider(color: AppColor.borderGrey),
@@ -997,6 +1148,159 @@ class _HomeKaderScreenState extends State<HomeKaderScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showAccountInfoDialog(String? email) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          "Informasi Akun",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Peran",
+              style: TextStyle(color: AppColor.textGrey, fontSize: 12),
+            ),
+            const Text(
+              "Admin / Kader Posyandu",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Email Terdaftar",
+              style: TextStyle(color: AppColor.textGrey, fontSize: 12),
+            ),
+            Text(
+              email ?? "-",
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "Tutup",
+              style: TextStyle(color: AppColor.primaryGreen),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showKodeUndanganDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          "Kode Undangan",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Berikan kode ini kepada Ibu untuk mendaftar ke posyandu Anda.",
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                "POSYANDU-BWI", // Kode Statis UI
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              "Tutup",
+              style: TextStyle(color: AppColor.textGrey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Kode disalin ke Clipboard!"),
+                  backgroundColor: AppColor.primaryGreen,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColor.primaryGreen,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              "Salin Kode",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHelpCenter() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24.0),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Pusat Bantuan Kader", style: AppTextStyle.heading1),
+              SizedBox(height: 16),
+              ListTile(
+                leading: Icon(
+                  Icons.contact_support_rounded,
+                  color: AppColor.primaryGreen,
+                ),
+                title: Text("Hubungi Super Admin"),
+                subtitle: Text("WhatsApp: 0812-XXXX-XXXX"),
+              ),
+              Divider(),
+              ListTile(
+                leading: Icon(
+                  Icons.menu_book_rounded,
+                  color: AppColor.primaryGreen,
+                ),
+                title: Text("Panduan Penggunaan"),
+                subtitle: Text("Baca cara menginput data balita"),
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
     );
   }
 

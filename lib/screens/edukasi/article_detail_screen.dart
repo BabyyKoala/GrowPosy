@@ -7,12 +7,11 @@ import '../../theme/app_text_style.dart';
 class ArticleDetailScreen extends StatelessWidget {
   final String title;
   final String category;
-
-  // 🔥 PERBAIKAN 3: Menambahkan parameter baru untuk menangkap data dari layar sebelumnya
   final String time;
   final String content;
   final IconData icon;
   final Color color;
+  final String source;
 
   const ArticleDetailScreen({
     super.key,
@@ -22,12 +21,12 @@ class ArticleDetailScreen extends StatelessWidget {
     required this.content,
     required this.icon,
     required this.color,
+    required this.source, // Wajib diisi dari layar sebelumnya
   });
 
   @override
   Widget build(BuildContext context) {
     // Kita langsung menggunakan 'color' yang dilempar dari layar sebelumnya
-    // sehingga fungsi _getCategoryColor() bisa dihapus agar kode lebih ringkas
     final catColor = color;
 
     return Scaffold(
@@ -48,16 +47,25 @@ class ArticleDetailScreen extends StatelessWidget {
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text("Artikel disimpan!"),
+                  content: Text("Artikel disimpan ke Bookmark!"),
                   backgroundColor: AppColor.primaryGreen,
-                  duration: Duration(seconds: 1),
+                  duration: Duration(seconds: 2),
                 ),
               );
             },
           ),
           IconButton(
             icon: const Icon(Icons.share_rounded, color: AppColor.textBlack),
-            onPressed: () {},
+            onPressed: () {
+              // TODO: Implementasi logika share eksternal
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Fitur bagikan sedang dikembangkan"),
+                  backgroundColor: Colors.indigo,
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -150,7 +158,7 @@ class ArticleDetailScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              "Dipublikasikan hari ini",
+                              "Ditinjau secara medis",
                               style: TextStyle(
                                 color: AppColor.textGrey,
                                 fontSize: 11,
@@ -177,7 +185,7 @@ class ArticleDetailScreen extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                time, // Menampilkan waktu baca (misal: "5 min read")
+                                time, // Waktu baca dinamis
                                 style: const TextStyle(
                                   color: AppColor.textGrey,
                                   fontSize: 11,
@@ -196,8 +204,9 @@ class ArticleDetailScreen extends StatelessWidget {
                     ),
 
                     // 🔥 ISI KONTEN DINAMIS
-                    Text(
-                      content, // Mengambil teks yang spesifik dari masing-masing artikel
+                    // Diganti menggunakan SelectableText agar user bisa copy teks jika perlu
+                    SelectableText(
+                      content,
                       style: const TextStyle(
                         fontSize: 16,
                         height: 1.8,
@@ -206,7 +215,56 @@ class ArticleDetailScreen extends StatelessWidget {
                       ),
                       textAlign: TextAlign.justify,
                     ),
+
                     const SizedBox(height: 40),
+
+                    // 🔥 FITUR BARU: KOTAK SUMBER REFERENSI
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: const [
+                              Icon(
+                                Icons.verified_user_rounded,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                "Sumber Referensi Medis Valid",
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            source, // Menampilkan teks sumber yang dikirim dari EdukasiScreen
+                            style: const TextStyle(
+                              color: AppColor.textGrey,
+                              fontSize: 13,
+                              height: 1.6,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height: 40,
+                    ), // Ruang ekstra di bawah agar nyaman di-scroll
                   ],
                 ),
               ),

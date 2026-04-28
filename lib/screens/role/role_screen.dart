@@ -42,6 +42,29 @@ class _RoleScreenState extends State<RoleScreen> {
       return;
     }
 
+    // 🔥 LOGIKA KUNCI: Validasi KADER-SIAGA di awal
+    if (selectedRole == 'kader') {
+      final code = codeController.text.trim().toUpperCase();
+      if (code.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Kode verifikasi kader wajib diisi."),
+            backgroundColor: AppColor.errorRed,
+          ),
+        );
+        return;
+      }
+      if (code != 'KADER-SIAGA') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Kode akses Kader tidak valid!"),
+            backgroundColor: AppColor.errorRed,
+          ),
+        );
+        return;
+      }
+    }
+
     setState(() => isLoading = true);
 
     try {
@@ -49,23 +72,7 @@ class _RoleScreenState extends State<RoleScreen> {
       if (uid == null)
         throw Exception("Sesi tidak valid, silakan login ulang.");
 
-      // 🔥 Keamanan: Jika Kader, wajib verifikasi kode terlebih dahulu
-      if (selectedRole == 'kader') {
-        final code = codeController.text.trim();
-        if (code.isEmpty) {
-          throw Exception("Kode verifikasi kader wajib diisi.");
-        }
-
-        bool isValid = await _firestore.verifyInviteCode(code);
-        if (!isValid) {
-          throw Exception("Kode kader tidak valid atau sudah digunakan.");
-        }
-
-        // Tandai kode sebagai terpakai oleh akun Google ini
-        await _firestore.useInviteCode(code, uid);
-      }
-
-      // 🔥 Update role di Firestore
+      // 🔥 Update role di Firestore (Tanpa menghanguskan kode)
       await _firestore.setUserRole(selectedRole!);
 
       if (!mounted) return;
@@ -77,16 +84,15 @@ class _RoleScreenState extends State<RoleScreen> {
         Navigator.pushReplacementNamed(context, '/home_kader');
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll("Exception: ", "")),
           backgroundColor: AppColor.errorRed,
         ),
       );
-    }
-
-    if (mounted) {
-      setState(() => isLoading = false);
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -99,14 +105,12 @@ class _RoleScreenState extends State<RoleScreen> {
     required String subtitle,
     required IconData icon,
   }) {
-    // Mengecek apakah kartu ini sedang dipilih
     final isSelected = selectedRole == roleValue;
 
     return GestureDetector(
       onTap: () {
         setState(() {
           selectedRole = roleValue;
-          // Kosongkan input kode jika user berpindah pilihan
           if (roleValue != 'kader') codeController.clear();
         });
       },
@@ -185,17 +189,13 @@ class _RoleScreenState extends State<RoleScreen> {
               padding: const EdgeInsets.all(24.0),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight:
-                      constraints.maxHeight -
-                      48, // Memastikan tombol selalu bisa di bawah
+                  minHeight: constraints.maxHeight - 48,
                 ),
                 child: IntrinsicHeight(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 20),
-
-                      // 🔥 HEADER
                       const Text(
                         "Satu Langkah Lagi!",
                         style: AppTextStyle.heading1,
@@ -207,7 +207,6 @@ class _RoleScreenState extends State<RoleScreen> {
                       ),
                       const SizedBox(height: 40),
 
-                      // 🔥 KARTU IBU
                       _buildRoleCard(
                         roleValue: 'ibu',
                         title: 'Ibu / Orang Tua',
@@ -215,10 +214,7 @@ class _RoleScreenState extends State<RoleScreen> {
                             'Pantau tumbuh kembang anak Anda dengan mudah.',
                         icon: Icons.child_care,
                       ),
-
                       const SizedBox(height: 16),
-
-                      // 🔥 KARTU KADER
                       _buildRoleCard(
                         roleValue: 'kader',
                         title: 'Kader Posyandu',
@@ -226,7 +222,6 @@ class _RoleScreenState extends State<RoleScreen> {
                         icon: Icons.admin_panel_settings_outlined,
                       ),
 
-                      // 🔥 FORM KODE KADER (Hanya muncul jika Kader dipilih)
                       AnimatedSize(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
@@ -243,8 +238,10 @@ class _RoleScreenState extends State<RoleScreen> {
                                     const SizedBox(height: 8),
                                     CustomTextField(
                                       controller: codeController,
-                                      hintText: "Masukkan kode dari Puskesmas",
+                                      hintText: "Masukkan kode: KADER-SIAGA",
                                       prefixIcon: Icons.vpn_key_outlined,
+                                      textCapitalization:
+                                          TextCapitalization.characters,
                                     ),
                                   ],
                                 ),
@@ -255,7 +252,6 @@ class _RoleScreenState extends State<RoleScreen> {
                       const Spacer(),
                       const SizedBox(height: 40),
 
-                      // 🔥 TOMBOL LANJUTKAN
                       CustomButton(
                         text: "Lanjutkan ke Aplikasi",
                         onPressed: handleSaveRole,

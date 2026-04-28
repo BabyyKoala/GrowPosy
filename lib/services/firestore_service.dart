@@ -1,19 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/child_model.dart';
 import 'package:flutter/foundation.dart';
+import '../models/child_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  // 🔥 Helper: Mendapatkan ID User yang sedang login
   String get _currentUid {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw Exception("User tidak terautentikasi");
+    if (uid == null) throw Exception("Sesi telah habis. Silakan login ulang.");
     return uid;
   }
 
   // ==========================
-  // 🔥 USER CRUD
+  // 👤 USER CRUD
   // ==========================
   Future<void> createUser({
     required String uid,
@@ -21,20 +22,30 @@ class FirestoreService {
     required String role,
     String name = '',
   }) async {
-    await _db.collection('users').doc(uid).set({
-      'email': email,
-      'role': role,
-      'name': name,
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      await _db.collection('users').doc(uid).set({
+        'email': email,
+        'role': role,
+        'name': name,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Error createUser: $e");
+      throw Exception("Gagal membuat profil pengguna.");
+    }
   }
 
   Future<String?> getUserRole() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return null;
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return null;
 
-    final doc = await _db.collection('users').doc(uid).get();
-    return doc.data()?['role'];
+      final doc = await _db.collection('users').doc(uid).get();
+      return doc.data()?['role'];
+    } catch (e) {
+      debugPrint("Error getUserRole: $e");
+      return null;
+    }
   }
 
   Future<void> setUserRole(String role) async {
@@ -42,21 +53,37 @@ class FirestoreService {
   }
 
   // ==========================
-  // 🔥 CHILD CRUD (IBU)
+  // 👶 CHILD CRUD (PROFIL ANAK)
   // ==========================
+
+  // 🔥 UPGRADE: Menambahkan Parameter Kelahiran agar sinkron dengan UI AddChildScreen
   Future<void> addChild({
+    required String userId,
     required String name,
+    required DateTime birthDate, // Parameter baru
     required int age,
     required String gender,
+    double? birthWeight, // Parameter baru
+    double? birthHeight, // Parameter baru
   }) async {
-    await _db.collection('users').doc(_currentUid).collection('children').add({
-      'name': name,
-      'age': age,
-      'gender': gender,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _db.collection('users').doc(userId).collection('children').add({
+        'userId': userId,
+        'name': name,
+        'birthDate': Timestamp.fromDate(birthDate), // Simpan sebagai Timestamp
+        'age': age,
+        'gender': gender,
+        'birthWeight': birthWeight,
+        'birthHeight': birthHeight,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint("Error addChild: $e");
+      throw Exception("Gagal menyimpan data anak.");
+    }
   }
 
+  // Khusus Ibu: Mengambil daftar anaknya sendiri
   Stream<List<ChildModel>> getChildren() {
     return _db
         .collection('users')
@@ -71,9 +98,7 @@ class FirestoreService {
         );
   }
 
-  // ==========================
-  // 🔥 DATA ANAK GLOBAL (KADER)
-  // ==========================
+  // Khusus Kader: Mengambil seluruh data anak dari semua Ibu
   Stream<List<Map<String, dynamic>>> getAllChildrenForKader() {
     return _db
         .collectionGroup('children')
@@ -95,31 +120,46 @@ class FirestoreService {
   }
 
   // ==========================
-  // 🔥 GROWTH TRACKING
+  // 📈 GROWTH TRACKING & MEDICAL RECORD (KMS)
   // ==========================
+
   Future<void> addGrowth({
     required String userId,
     required String childId,
     required double weight,
     required double height,
+    required String imunisasi,
   }) async {
-    await _db
-        .collection('users')
-        .doc(userId)
-        .collection('children')
-        .doc(childId)
-        .collection('growth')
-        .add({
-          'weight': weight,
-          'height': height,
-          'date': FieldValue.serverTimestamp(),
-        });
+    try {
+      await _db
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(childId)
+          .collection('growth')
+          .add({
+            'weight': weight,
+            'height': height,
+            'imunisasi': imunisasi,
+            'date': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      debugPrint("Error addGrowth: $e");
+      throw Exception("Gagal menyimpan data KMS.");
+    }
   }
 
-  Stream<List<Map<String, dynamic>>> getGrowth(String childId) {
+  // 🔥 UPGRADE: Menambahkan parameter opsional [targetUserId] agar Kader bisa melihat grafik anak dari Ibu lain
+  Stream<List<Map<String, dynamic>>> getGrowth(
+    String childId, {
+    String? targetUserId,
+  }) {
+    final uid =
+        targetUserId ??
+        _currentUid; // Gunakan UID yang dikirim, atau UID Ibu yang login
     return _db
         .collection('users')
-        .doc(_currentUid)
+        .doc(uid)
         .collection('children')
         .doc(childId)
         .collection('growth')
@@ -128,10 +168,12 @@ class FirestoreService {
         .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
   }
 
-  Stream<double?> getLastWeight(String childId) {
+  // 🔥 UPGRADE: Mengizinkan parameter [targetUserId] untuk daftar Kader
+  Stream<double?> getLastWeight(String childId, {String? targetUserId}) {
+    final uid = targetUserId ?? _currentUid;
     return _db
         .collection('users')
-        .doc(_currentUid)
+        .doc(uid)
         .collection('children')
         .doc(childId)
         .collection('growth')
@@ -160,24 +202,45 @@ class FirestoreService {
     return (snapshot.docs.first.data()['weight'] as num).toDouble();
   }
 
+  Future<Map<String, dynamic>?> getLastGrowthData(
+    String userId,
+    String childId,
+  ) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('children')
+          .doc(childId)
+          .collection('growth')
+          .orderBy('date', descending: true)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) return null;
+      return snapshot.docs.first.data();
+    } catch (e) {
+      debugPrint("Error getLastGrowthData: $e");
+      return null;
+    }
+  }
+
   // ==================================================
-  // 🔥 INVITE CODE SYSTEM (KADER) - MULTI-USE VERSION
+  // 🎟️ INVITE CODE SYSTEM (KADER)
   // ==================================================
 
   Future<bool> verifyInviteCode(String code) async {
     final cleanCode = code.trim().toUpperCase();
     try {
-      // Hanya mengecek apakah kode tersebut ADA di database
-      // Tidak lagi mengecek status isUsed
       final result = await _db
           .collection('invite_codes')
           .where('code', isEqualTo: cleanCode)
-          .limit(1) // Optimasi performa: batasi pencarian 1 dokumen saja
+          .limit(1)
           .get();
 
       return result.docs.isNotEmpty;
     } catch (e) {
-      debugPrint("Error saat memverifikasi kode: $e");
+      debugPrint("Error memverifikasi kode: $e");
       return false;
     }
   }
@@ -193,9 +256,6 @@ class FirestoreService {
 
       if (query.docs.isNotEmpty) {
         final docId = query.docs.first.id;
-
-        // Menggunakan FieldValue.arrayUnion untuk mengumpulkan daftar UID
-        // Ini tidak akan menimpa UID sebelumnya, melainkan menambahkannya ke dalam daftar
         await _db.collection('invite_codes').doc(docId).update({
           'usedBy': FieldValue.arrayUnion([uid]),
           'lastUsedAt': FieldValue.serverTimestamp(),
@@ -210,15 +270,45 @@ class FirestoreService {
   // 📅 MANAJEMEN JADWAL POSYANDU
   // ==========================================
   Future<void> addJadwal(Map<String, dynamic> data) async {
-    await _db.collection('jadwal').add({
-      ...data,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _db.collection('jadwal').add({
+        ...data,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint("Error addJadwal: $e");
+      throw Exception("Gagal menambah jadwal Posyandu.");
+    }
   }
 
   Stream<List<Map<String, dynamic>>> getJadwal() {
     return _db
         .collection('jadwal')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => doc.data()).toList());
+  }
+
+  // ==========================================
+  // 📢 SISTEM PENGUMUMAN (BROADCAST)
+  // ==========================================
+  Future<void> sendPengumuman(String pesan) async {
+    try {
+      await _db.collection('pengumuman').add({
+        'pesan': pesan,
+        'senderId': _currentUid, // ID Kader yang mengirim
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint("Error sendPengumuman: $e");
+      throw Exception("Gagal mengirim pengumuman. Periksa koneksi Anda.");
+    }
+  }
+
+  // Fungsi untuk mengambil pengumuman (Nanti bisa dipanggil di layar Beranda Ibu)
+  Stream<List<Map<String, dynamic>>> getPengumuman() {
+    return _db
+        .collection('pengumuman')
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snap) => snap.docs.map((doc) => doc.data()).toList());

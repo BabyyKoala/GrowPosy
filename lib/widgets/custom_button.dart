@@ -19,61 +19,44 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Memisahkan isi konten agar kode tidak berulang
+    final Widget buttonContent = isLoading
+        ? SizedBox(
+            height: 24,
+            width: 24,
+            child: CircularProgressIndicator(
+              color: isOutlined ? AppColor.primaryGreen : AppColor.bgWhite,
+              strokeWidth: 2.5,
+            ),
+          )
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // Agar ikon dan teks rapat ke tengah
+            children: [
+              if (icon != null) ...[icon!, const SizedBox(width: 8)],
+              // 🔥 PERBAIKAN: Dibungkus Flexible agar tidak overflow di layar kecil
+              Flexible(
+                child: Text(
+                  text,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis, // Teks akan jadi "..." jika kepanjangan
+                ),
+              ),
+            ],
+          );
+
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: 52, // Standar target sentuh (touch target) UI/UX modern
       child: isOutlined
           ? OutlinedButton(
               onPressed: isLoading ? null : onPressed,
-              style: OutlinedButton.styleFrom(
-                backgroundColor: AppColor.bgWhite,
-                side: const BorderSide(color: AppColor.borderGrey),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: _buildContent(),
+              child: buttonContent,
             )
           : ElevatedButton(
               onPressed: isLoading ? null : onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColor.primaryGreen,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: _buildContent(),
+              child: buttonContent,
             ),
-    );
-  }
-
-  Widget _buildContent() {
-    if (isLoading) {
-      return SizedBox(
-        height: 24,
-        width: 24,
-        child: CircularProgressIndicator(
-          color: isOutlined ? AppColor.primaryGreen : AppColor.bgWhite,
-          strokeWidth: 2.5,
-        ),
-      );
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (icon != null) ...[icon!, const SizedBox(width: 8)],
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: isOutlined ? AppColor.textBlack : AppColor.bgWhite,
-          ),
-        ),
-      ],
     );
   }
 }

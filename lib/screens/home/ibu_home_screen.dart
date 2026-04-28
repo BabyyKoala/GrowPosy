@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 // 🔥 Import Service & Model
 import '../../services/firestore_service.dart';
 import '../../models/child_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Tambahkan ini untuk Timestamp formatting jika diperlukan, atau ganti dengan intl.
+import 'package:intl/intl.dart'; // 🔥 Import intl untuk format waktu
 
 // 🔥 Import Sistem Tema
 import '../../theme/app_color.dart';
@@ -10,12 +13,9 @@ import '../../theme/app_text_style.dart';
 
 // 🔥 Import Semua Screen Modular
 import '../growth/growth_chart_screen.dart';
-// import '../child/child_list_screen.dart'; // ❌ KITA MATIKAN: Ini layar milik Kader
 import '../posyandu/posyandu_screen.dart';
 import '../edukasi/edukasi_screen.dart';
 import '../profil/profil_screen.dart';
-
-// 🔥 IMPORT HALAMAN BARU
 import '../imunisasi/imunisasi_screen.dart';
 import '../edukasi/article_detail_screen.dart';
 
@@ -29,133 +29,204 @@ class HomeIbuScreen extends StatefulWidget {
 class _HomeIbuScreenState extends State<HomeIbuScreen> {
   int _selectedIndex = 0;
   int _selectedChildIndex = 0;
+  bool _hasUnreadNotif = true;
 
   @override
   Widget build(BuildContext context) {
     final firestore = FirestoreService();
 
-    // ==========================================
-    // 🚀 DAFTAR HALAMAN NAVBAR KHUSUS IBU
-    // ==========================================
     final List<Widget> pages = [
-      _buildMainDashboard(firestore), // Index 0: Beranda
-      _buildIbuChildList(
-        firestore,
-      ), // 🔥 Index 1: PERBAIKAN - Daftar Anak Khusus Ibu (Hanya Lihat Grafik)
-      const PosyanduScreen(), // Index 2: Lokasi Posyandu
-      const EdukasiScreen(), // Index 3: Portal Edukasi
-      const ProfilScreen(), // Index 4: Profil
+      _buildMainDashboard(firestore),
+      _buildIbuChildList(firestore),
+      const PosyanduScreen(),
+      const EdukasiScreen(),
+      const ProfilScreen(),
     ];
 
-    return Scaffold(
-      backgroundColor: AppColor.bgWhite,
-      body: Stack(
-        children: [
-          IndexedStack(index: _selectedIndex, children: pages),
-          _buildFloatingNavBar(),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              "Keluar Aplikasi?",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: const Text(
+              "Apakah Anda yakin ingin keluar dari aplikasi GrowPosy?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  "Batal",
+                  style: TextStyle(color: AppColor.textGrey),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColor.errorRed,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  "Keluar",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColor.bgWhite,
+        body: Stack(
+          children: [
+            IndexedStack(index: _selectedIndex, children: pages),
+            _buildFloatingNavBar(),
+          ],
+        ),
       ),
     );
   }
 
   // ==========================================
-  // 🔥 TAB 1: DAFTAR ANAK KHUSUS IBU (ANTI-INPUT)
+  // 🔥 TAB 1: DAFTAR ANAK (Dengan Tombol Tambah di Bawah Kanan)
   // ==========================================
   Widget _buildIbuChildList(FirestoreService firestore) {
-    return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Text("Pantau Grafik Anak", style: AppTextStyle.heading1),
+    return Scaffold(
+      backgroundColor:
+          Colors.transparent, // Agar background menyatu dengan parent
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(
+          bottom: 90.0,
+        ), // Hindari tab bar menutupi tombol
+        child: FloatingActionButton.extended(
+          backgroundColor: AppColor.primaryGreen,
+          onPressed: () {
+            Navigator.pushNamed(context, '/add_child');
+          },
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text(
+            "Tambah Anak",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          Expanded(
-            child: StreamBuilder<List<ChildModel>>(
-              stream: firestore.getChildren(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColor.primaryGreen,
-                    ),
-                  );
-                }
-
-                final children = snapshot.data ?? [];
-                if (children.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "Belum ada profil anak. Tambahkan di Beranda.",
-                      style: TextStyle(color: AppColor.textGrey),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: children.length,
-                  itemBuilder: (context, index) {
-                    final child = children[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: AppColor.borderGrey),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
-                        leading: CircleAvatar(
-                          backgroundColor: AppColor.primaryGreen.withOpacity(
-                            0.1,
-                          ),
-                          child: const Icon(
-                            Icons.face,
-                            color: AppColor.primaryGreen,
-                          ),
-                        ),
-                        title: Text(
-                          child.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColor.textBlack,
-                          ),
-                        ),
-                        subtitle: Text("Usia: ${child.age} bulan"),
-                        trailing: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColor.primaryGreen,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.show_chart,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                        onTap: () {
-                          // 🔥 IBU HANYA BISA MASUK KE GRAFIK (VIEW ONLY)
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => GrowthChartScreen(
-                                childId: child.id,
-                                age: child.age,
-                              ),
-                            ),
-                          );
-                        },
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Text("Pantau Grafik Anak", style: AppTextStyle.heading1),
+            ),
+            Expanded(
+              child: StreamBuilder<List<ChildModel>>(
+                stream: firestore.getChildren(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColor.primaryGreen,
                       ),
                     );
-                  },
-                );
-              },
+                  }
+
+                  final children = snapshot.data ?? [];
+                  if (children.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        "Belum ada profil anak. Silakan klik tombol di bawah.",
+                        style: TextStyle(color: AppColor.textGrey),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(
+                      left: 24,
+                      right: 24,
+                      bottom: 100,
+                    ),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: children.length,
+                    itemBuilder: (context, index) {
+                      final child = children[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: const BorderSide(color: AppColor.borderGrey),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(16),
+                          leading: CircleAvatar(
+                            backgroundColor: AppColor.primaryGreen.withOpacity(
+                              0.1,
+                            ),
+                            child: const Icon(
+                              Icons.face,
+                              color: AppColor.primaryGreen,
+                            ),
+                          ),
+                          title: Text(
+                            child.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColor.textBlack,
+                            ),
+                          ),
+                          subtitle: Text("Usia: ${child.age} bulan"),
+                          trailing: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColor.primaryGreen,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.show_chart,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => GrowthChartScreen(
+                                  childId: child.id,
+                                  age: child.age,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -171,18 +242,16 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTopProfileHeader(),
+            _buildTopProfileHeader(firestore), // 🔥 Update: Kirim firestore ke sini
             _buildChildSelector(firestore),
-            _buildGrowthStatusCard(
-              firestore,
-            ), // 🔥 Diperbarui dengan data Real-time
+            _buildGrowthStatusCard(firestore),
             _buildQuickMenu(),
             _buildSectionTitle(
               "Jadwal Mendatang",
               "Lihat Semua",
               () => setState(() => _selectedIndex = 2),
             ),
-            _buildUpcomingSchedule(),
+            _buildUpcomingSchedule(firestore), // 🔥 Update: Ambil jadwal dari firestore
             _buildSectionTitle(
               "Edukasi Pilihan",
               "Semua",
@@ -195,11 +264,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ==========================================
-  // KOMPONEN DASHBOARD BERANDA
-  // ==========================================
-
-  Widget _buildTopProfileHeader() {
+  Widget _buildTopProfileHeader(FirestoreService firestore) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
       child: Row(
@@ -228,17 +293,42 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
             ],
           ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColor.borderGrey),
-            ),
-            child: const Icon(
-              Icons.notifications_none_rounded,
-              size: 22,
-              color: AppColor.textBlack,
+          GestureDetector(
+            onTap: () {
+              setState(() => _hasUnreadNotif = false);
+              _showNotificationPanel(context, firestore); // 🔥 Buka Panel Notifikasi
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColor.borderGrey),
+                  ),
+                  child: const Icon(
+                    Icons.notifications_none_rounded,
+                    size: 22,
+                    color: AppColor.textBlack,
+                  ),
+                ),
+                if (_hasUnreadNotif)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: AppColor.errorRed,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -246,6 +336,164 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
+  // 🔥 UPDATE: Menggunakan StreamBuilder untuk menampilkan pengumuman secara Real-Time
+  void _showNotificationPanel(BuildContext context, FirestoreService firestore) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: Text("Notifikasi & Pengumuman", style: AppTextStyle.heading1),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: firestore.getPengumuman(), // 🔥 Listen ke Firebase
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: AppColor.primaryGreen),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return const Center(child: Text("Gagal memuat notifikasi"));
+                    }
+
+                    final pengumumanList = snapshot.data ?? [];
+
+                    return ListView(
+                      physics: const BouncingScrollPhysics(),
+                      children: [
+                        // Notifikasi Statis / Default
+                        _buildNotifItem(
+                          icon: Icons.auto_graph_rounded,
+                          color: AppColor.primaryGreen,
+                          title: "Data Pertumbuhan Diperbarui",
+                          subtitle:
+                              "Kader mungkin baru saja memasukkan data anak Anda. Cek grafik KMS secara berkala.",
+                          time: "Sistem",
+                          onTap: () {
+                            Navigator.pop(context);
+                            setState(() => _selectedIndex = 1);
+                          },
+                        ),
+                        
+                        // 🔥 Merender Daftar Pengumuman dari Database
+                        ...pengumumanList.map((data) {
+                          // Formatting Waktu (Timestamp ke String)
+                          String timeStr = "Baru saja";
+                          if (data['createdAt'] != null) {
+                             final timestamp = data['createdAt'] as Timestamp;
+                             timeStr = DateFormat('dd MMM, HH:mm').format(timestamp.toDate());
+                          }
+
+                          return _buildNotifItem(
+                            icon: Icons.campaign_rounded,
+                            color: Colors.indigo,
+                            title: "Pengumuman dari Kader 📢",
+                            subtitle: data['pesan'] ?? "Pesan tidak tersedia",
+                            time: timeStr,
+                            onTap: () => Navigator.pop(context),
+                          );
+                        }),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNotifItem({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required String time,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: AppColor.borderGrey, width: 0.5),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        time,
+                        style: const TextStyle(
+                          color: AppColor.textGrey,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColor.textGrey,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🔥 Selector Anak Murni (Tanpa Tombol Tambah di Ujung)
   Widget _buildChildSelector(FirestoreService firestore) {
     return StreamBuilder<List<ChildModel>>(
       stream: firestore.getChildren(),
@@ -260,39 +508,8 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.only(left: 24),
-            itemCount: children.length + 1,
+            itemCount: children.length,
             itemBuilder: (context, index) {
-              if (index == children.length) {
-                return GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/add_child'),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 24),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: AppColor.bgWhite,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppColor.primaryGreen,
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.add, color: AppColor.primaryGreen, size: 18),
-                        SizedBox(width: 6),
-                        Text(
-                          "Tambah",
-                          style: TextStyle(
-                            color: AppColor.primaryGreen,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
               final child = children[index];
               bool isSelected = _selectedChildIndex == index;
 
@@ -425,30 +642,31 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               ),
               const SizedBox(height: 24),
 
-              // 🔥 PERBAIKAN: MENGAMBIL DATA ASLI DARI FIREBASE (BUKAN DUMMY)
               StreamBuilder<List<Map<String, dynamic>>>(
                 stream: firestore.getGrowth(child.id),
                 builder: (context, growthSnap) {
                   String weight = "-";
                   String height = "-";
+                  String imunisasiTerakhir = "-"; // 🔥 Imunisasi Dikembalikan
 
                   if (growthSnap.hasData && growthSnap.data!.isNotEmpty) {
-                    final latestData =
-                        growthSnap.data!.last; // Data paling ujung (terbaru)
+                    final latestData = growthSnap.data!.last;
                     weight = latestData['weight'].toString();
                     height = latestData['height'].toString();
+
+                    imunisasiTerakhir =
+                        latestData['imunisasi']?.toString() ?? "-";
+                    if (imunisasiTerakhir.isEmpty) imunisasiTerakhir = "-";
                   }
 
                   return Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildSmallStat("Berat", weight, "kg"),
-                      _buildSmallStat("Tinggi", height, "cm"),
-                      _buildSmallStat(
-                        "Lingkar",
-                        "-",
-                        "cm",
-                      ), // Belum diimplementasikan
+                      Expanded(child: _buildSmallStat("Berat", weight, "kg")),
+                      Expanded(child: _buildSmallStat("Tinggi", height, "cm")),
+                      Expanded(
+                        child: _buildTextStat("Imunisasi", imunisasiTerakhir),
+                      ),
                     ],
                   );
                 },
@@ -459,7 +677,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // 🔥 TOMBOL INI HANYA MEMBUKA GRAFIK KMS (VIEW ONLY)
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -527,6 +744,33 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextStat(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColor.textGrey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColor.primaryGreen,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
           ),
         ),
       ],
@@ -626,64 +870,93 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  Widget _buildUpcomingSchedule() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColor.borderGrey),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  // 🔥 UPDATE: Mengambil Jadwal Posyandu Mendatang dari Firebase
+  Widget _buildUpcomingSchedule(FirestoreService firestore) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: firestore.getJadwal(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+           return const Center(child: CircularProgressIndicator(color: AppColor.primaryGreen));
+        }
+
+        final jadwalList = snapshot.data ?? [];
+        if (jadwalList.isEmpty) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColor.errorRed.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColor.borderGrey),
             ),
-            child: const Column(
-              children: [
-                Text(
-                  "15",
-                  style: TextStyle(
-                    color: AppColor.errorRed,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                Text(
-                  "Apr",
-                  style: TextStyle(
-                    color: AppColor.errorRed,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            child: const Center(
+              child: Text("Belum ada jadwal kegiatan", style: TextStyle(color: AppColor.textGrey)),
             ),
+          );
+        }
+
+        // Ambil jadwal paling terbaru
+        final jadwal = jadwalList.first;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColor.borderGrey),
           ),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Posyandu Mawar",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColor.errorRed.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                SizedBox(height: 4),
-                Text(
-                  "Imunisasi Dasar & Vitamin A",
-                  style: TextStyle(color: AppColor.textGrey, fontSize: 12),
+                child: Column(
+                  children: [
+                    Text(
+                      jadwal['tanggal']?.toString() ?? "-",
+                      style: const TextStyle(
+                        color: AppColor.errorRed,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    Text(
+                      jadwal['bulan']?.toString() ?? "-",
+                      style: const TextStyle(
+                        color: AppColor.errorRed,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      jadwal['lokasi']?.toString() ?? "Posyandu",
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      jadwal['kegiatan']?.toString() ?? "-",
+                      style: const TextStyle(color: AppColor.textGrey, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColor.textGrey),
+            ],
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppColor.textGrey),
-        ],
-      ),
+        );
+      }
     );
   }
 
@@ -718,7 +991,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
   Widget _buildMiniArticleCard(String category, String title, Color color) {
     return GestureDetector(
       onTap: () {
-        // 🔥 PERBAIKAN: Menambahkan parameter yang dibutuhkan ArticleDetailScreen
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -726,12 +998,15 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
               title: title,
               category: category,
               color: color,
-              // Karena ini Mini Card statis, kita berikan data konten dummy default
-              // Kamu bisa menyesuaikan teks ini jika mau
-              time: "5 min read",
-              icon: Icons.menu_book_rounded,
+              time: "3 Min Read",
+              icon: Icons
+                  .tips_and_updates_rounded, // Sedikit disesuaikan agar lebih menarik
               content:
-                  "Ini adalah artikel singkat mengenai $category. \n\nMembaca informasi seputar $title sangat penting untuk menunjang tumbuh kembang anak Anda agar tetap sehat dan ceria. Jangan ragu untuk selalu berkonsultasi dengan kader posyandu atau bidan terdekat untuk informasi lebih lanjut.",
+                  "Ini adalah artikel ringkasan mengenai $category.\n\n"
+                  "Membaca informasi dan panduan medis seputar $title sangat penting untuk menunjang tumbuh kembang anak Anda agar tetap sehat, aktif, dan terhindar dari penyakit.\n\n"
+                  "Untuk panduan nutrisi, pola asuh, dan jadwal imunisasi yang lebih komprehensif, silakan kunjungi menu 'Pusat Edukasi' di aplikasi GrowPosy.",
+              // 🔥 PERBAIKAN: Menambahkan parameter 'source' yang kini wajib diisi
+              source: "Ringkasan Edukasi Harian - Tim Dokter GrowPosy",
             ),
           ),
         );
@@ -748,6 +1023,7 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 🏷️ Kategori Badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
@@ -755,29 +1031,47 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                category,
+                category.toUpperCase(),
                 style: TextStyle(
                   color: color,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
             const Spacer(),
+            // 📝 Judul Artikel
             Text(
               title,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
                 height: 1.3,
+                color: AppColor.textBlack, // Tambahan warna agar lebih tegas
               ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
-            const Text(
-              "Baca selengkapnya",
-              style: TextStyle(color: AppColor.textGrey, fontSize: 11),
+            const SizedBox(height: 10),
+            // ➡️ Teks Baca Selengkapnya
+            Row(
+              children: [
+                const Text(
+                  "Baca selengkapnya",
+                  style: TextStyle(
+                    color: AppColor.textGrey,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 12,
+                  color: color, // Panah kecil menyesuaikan warna kategori
+                ),
+              ],
             ),
           ],
         ),
@@ -785,9 +1079,6 @@ class _HomeIbuScreenState extends State<HomeIbuScreen> {
     );
   }
 
-  // ==========================================
-  // FLOATING BOTTOM NAVBAR
-  // ==========================================
   Widget _buildFloatingNavBar() {
     return Align(
       alignment: Alignment.bottomCenter,

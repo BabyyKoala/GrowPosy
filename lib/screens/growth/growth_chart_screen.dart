@@ -18,9 +18,6 @@ class GrowthChartScreen extends StatelessWidget {
     required this.age,
   });
 
-  // =========================
-  // 🔥 RANGE BERAT & TINGGI (Estimasi Logika Dasar KMS)
-  // =========================
   Map<String, double> getWeightRangeByAge(int age) {
     if (age <= 1) return {'min': 3, 'max': 10};
     if (age <= 2) return {'min': 8, 'max': 14};
@@ -38,26 +35,27 @@ class GrowthChartScreen extends StatelessWidget {
   }
 
   // =========================
-  // 🔥 DETEKSI TREN BERAT (Standar Posyandu: Peringatan 2T)
+  // 🔥 DETEKSI TREN BERAT (Akurasi Standar Posyandu KMS: N, T, 2T)
   // =========================
   String detectWeightTrend(List<Map<String, dynamic>> growth) {
-    if (growth.length < 2) return "Data Kurang";
+    if (growth.length < 2) return "Data Awal (Belum Ada Tren)";
 
-    // Data dijamin kronologis (terlama -> terbaru)
     final current = (growth.last['weight'] ?? 0).toDouble();
     final prev = (growth[growth.length - 2]['weight'] ?? 0).toDouble();
 
     if (current < prev) {
       if (growth.length >= 3) {
         final prev2 = (growth[growth.length - 3]['weight'] ?? 0).toDouble();
-        if (prev < prev2)
-          return "Turun 2x Berturut ⚠️"; // Ini butuh rujukan di KMS
+        if (prev < prev2) {
+          return "Turun Berturut-turut (2T) ⚠️"; // Peringatan Keras Gizi Buruk KMS
+        }
       }
-      return "Turun Bulan Ini 📉";
+      return "Turun Bulan Ini (T) 📉";
     } else if (current == prev) {
-      return "Tidak Naik (Tetap) ⚠️";
+      return "Tetap / Tidak Naik (T) ⚠️";
     }
-    return "Naik 📈";
+
+    return "Naik (N) 📈";
   }
 
   @override
@@ -86,8 +84,6 @@ class GrowthChartScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        // 🔥 PERBAIKAN BUG KRUSIAL:
-        // DIBIARKAN KRONOLOGIS (Kiri -> Kanan = Lama -> Baru)
         stream: firestore.getGrowth(childId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -102,10 +98,13 @@ class GrowthChartScreen extends StatelessWidget {
             return _buildEmptyState();
           }
 
-          // Mengambil data PALING BARU (Ujung kanan array)
           final last = growth.last;
           final weight = (last['weight'] ?? 0).toDouble();
           final height = (last['height'] ?? 0).toDouble();
+
+          // 🔥 Mengambil Data Imunisasi Terakhir untuk Detail
+          String imunisasi = last['imunisasi']?.toString() ?? "-";
+          if (imunisasi.isEmpty) imunisasi = "-";
 
           // STATUS LOGIC
           String weightStatus = weight < weightRange['min']!
@@ -137,7 +136,6 @@ class GrowthChartScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 🔥 KARTU DIAGNOSIS TERAKHIR
                 const Text(
                   "Ringkasan Pemeriksaan Terakhir",
                   style: AppTextStyle.heading1,
@@ -165,6 +163,11 @@ class GrowthChartScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // 🔥 KARTU BARU: INFORMASI IMUNISASI
+                _buildImmunizationCard(imunisasi),
+                const SizedBox(height: 16),
+
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -181,7 +184,7 @@ class GrowthChartScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            "Tren Pertumbuhan",
+                            "Tren Pertumbuhan (Standar KMS)",
                             style: TextStyle(
                               fontSize: 12,
                               color: AppColor.textGrey,
@@ -298,6 +301,59 @@ class GrowthChartScreen extends StatelessWidget {
     );
   }
 
+  // 🔥 WIDGET BARU: KARTU IMUNISASI
+  Widget _buildImmunizationCard(String imunisasi) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColor.borderGrey),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.vaccines, color: Colors.orange),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Imunisasi Diterima",
+                  style: TextStyle(color: AppColor.textGrey, fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  imunisasi,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColor.textBlack,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // =========================
   // 🎨 WIDGET GRAFIK FL_CHART
   // =========================
@@ -306,13 +362,12 @@ class GrowthChartScreen extends StatelessWidget {
     String key,
     Color lineColor,
   ) {
-    // Cari nilai maksimum untuk mengatur tinggi chart agar rapi
     double maxY = 0;
     for (var data in growth) {
       double val = (data[key] ?? 0).toDouble();
       if (val > maxY) maxY = val;
     }
-    maxY = maxY + (key == 'weight' ? 5 : 20); // Tambah ruang atas
+    maxY = maxY + (key == 'weight' ? 5 : 20);
 
     return Container(
       height: 250,
@@ -396,7 +451,7 @@ class GrowthChartScreen extends StatelessWidget {
           borderData: FlBorderData(show: false),
           lineBarsData: [
             LineChartBarData(
-              isCurved: false, // Kurva kaku agar lebih mirip KMS manual asli
+              isCurved: false,
               color: lineColor,
               barWidth: 3,
               isStrokeCapRound: true,

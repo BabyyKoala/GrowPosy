@@ -33,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ==========================================
-  // ⚙️ LOGIKA BACKEND (TIDAK ADA YANG DIUBAH)
+  // ⚙️ LOGIKA BACKEND
   // ==========================================
 
   void handleLogin() async {
@@ -51,18 +51,26 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
 
         if (role == 'ibu') {
-          Navigator.pushReplacementNamed(context, '/home_ibu');
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home_ibu',
+            (route) => false,
+          );
         } else if (role == 'kader') {
-          Navigator.pushReplacementNamed(context, '/home_kader');
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home_kader',
+            (route) => false,
+          );
         } else {
-          Navigator.pushReplacementNamed(context, '/role');
+          Navigator.pushNamedAndRemoveUntil(context, '/role', (route) => false);
         }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll("Exception: ", "")),
-          backgroundColor: AppColor.errorRed, // Menggunakan AppColor
+          backgroundColor: AppColor.errorRed,
         ),
       );
     }
@@ -80,11 +88,19 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
 
         if (role == 'ibu') {
-          Navigator.pushReplacementNamed(context, '/home_ibu');
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home_ibu',
+            (route) => false,
+          );
         } else if (role == 'kader') {
-          Navigator.pushReplacementNamed(context, '/home_kader');
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            '/home_kader',
+            (route) => false,
+          );
         } else {
-          Navigator.pushReplacementNamed(context, '/role');
+          Navigator.pushNamedAndRemoveUntil(context, '/role', (route) => false);
         }
       }
     } catch (e) {
@@ -92,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceAll("Exception: ", "")),
-            backgroundColor: AppColor.errorRed, // Menggunakan AppColor
+            backgroundColor: AppColor.errorRed,
           ),
         );
       }
@@ -104,13 +120,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ==========================================
-  // 🎨 TAMPILAN UI (PEMBARUAN LOGO)
+  // 🎨 TAMPILAN UI
   // ==========================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColor.bgWhite, // Tersentralisasi
+      backgroundColor: AppColor.bgWhite,
       appBar: AppBar(
         backgroundColor: AppColor.bgWhite,
         elevation: 0,
@@ -133,7 +149,6 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 20),
 
-                // 🔥 PEMBARUAN: LOGO TEKS GROWPOSY
                 Image.asset(
                   'assets/images/logo_teks.png',
                   height: 35,
@@ -142,7 +157,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 30),
 
-                // 🔥 JUDUL
                 const Text("Selamat Datang", style: AppTextStyle.heading1),
                 const SizedBox(height: 8),
                 const Text(
@@ -152,7 +166,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 40),
 
-                // 🔥 INPUT EMAIL
                 const Text("Email", style: AppTextStyle.inputLabel),
                 const SizedBox(height: 8),
                 CustomTextField(
@@ -161,8 +174,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: Icons.person_outline,
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return "Email wajib diisi";
+                    }
                     if (!value.contains("@")) return "Format email tidak valid";
                     return null;
                   },
@@ -170,7 +184,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 20),
 
-                // 🔥 INPUT PASSWORD & LUPA PASSWORD
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -208,8 +221,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return "Password wajib diisi";
+                    }
                     if (value.length < 6) return "Minimal 6 karakter";
                     return null;
                   },
@@ -217,7 +231,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 35),
 
-                // 🔥 TOMBOL LOGIN
                 CustomButton(
                   text: "Masuk Sekarang",
                   onPressed: handleLogin,
@@ -226,14 +239,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 24),
 
-                // 🔥 GARIS "ATAU MASUK DENGAN"
-                Row(
+                const Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Divider(color: AppColor.borderGrey, thickness: 1),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         "atau masuk dengan",
                         style: TextStyle(
@@ -242,7 +254,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                       child: Divider(color: AppColor.borderGrey, thickness: 1),
                     ),
                   ],
@@ -250,22 +262,59 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 24),
 
-                // 🔥 TOMBOL GOOGLE
-                CustomButton(
-                  text: "Google",
-                  onPressed: handleGoogleLogin,
-                  isLoading: isLoading,
-                  isOutlined: true,
-                  icon: const Icon(
-                    Icons.g_mobiledata,
-                    size: 36,
-                    color: AppColor.errorRed,
+                // 🔥 PERBAIKAN: Menggunakan Row agar Logo dan Teks berdampingan di tengah
+                SizedBox(
+                  width: double.infinity,
+                  height: 56, 
+                  child: OutlinedButton(
+                    onPressed: isLoading ? null : handleGoogleLogin,
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      side: const BorderSide(color: AppColor.borderGrey),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              color: AppColor.primaryGreen,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/images/google.png',
+                                height: 24,
+                                errorBuilder: (context, error, stackTrace) => const Text(
+                                  "G",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12), // Memberikan jarak yang pas antara logo dan teks
+                              const Text(
+                                "Google",
+                                style: TextStyle(
+                                  color: AppColor.textBlack,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
 
                 const SizedBox(height: 40),
 
-                // 🔥 TEKS DAFTAR SEKARANG
                 Center(
                   child: GestureDetector(
                     onTap: () => Navigator.pushNamed(context, '/register'),

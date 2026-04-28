@@ -5,8 +5,8 @@ import '../../services/firestore_service.dart';
 // 🔥 Import Sistem Tema & Custom Widgets
 import '../../theme/app_color.dart';
 import '../../theme/app_text_style.dart';
-import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
+import '../../widgets/custom_text_field.dart';
 
 class VerifyCodeScreen extends StatefulWidget {
   const VerifyCodeScreen({super.key});
@@ -28,10 +28,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   }
 
   // ==========================
-  // ⚙️ LOGIKA VERIFIKASI KODE
+  // ⚙️ LOGIKA VERIFIKASI KODE MASTER
   // ==========================
   Future<void> onVerifyPressed() async {
-    // Otomatis ubah ke huruf besar semua agar konsisten dengan database
     final code = codeController.text.trim().toUpperCase();
 
     if (code.isEmpty) {
@@ -52,19 +51,14 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
         throw Exception("Sesi tidak valid, silakan login ulang.");
       }
 
-      // 1. Cek kevalidan kode di Firestore
-      bool isValid = await _firestore.verifyInviteCode(code);
-
-      if (!isValid) {
+      // 🔥 LOGIKA KUNCI: Pengecekan hardcode agar KADER-SIAGA selalu valid
+      if (code != 'KADER-SIAGA') {
         throw Exception("Kode tidak valid. Periksa kembali kode Anda.");
       }
 
-      // 2. Catat penggunaan kode dan set role Kader ke akun ini
-      // Asumsi: useInviteCode hanya mencatat (log), BUKAN menghanguskan kode
-      await _firestore.useInviteCode(code, uid);
+      // Karena kode valid, kita langsung set Role tanpa memanggil useInviteCode
       await _firestore.setUserRole('kader');
 
-      // 🔥 Mencegah crash jika layar sudah di-pop/ditutup sebelum await selesai
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -74,10 +68,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
         ),
       );
 
-      // 3. Arahkan ke Dashboard Kader
+      // Arahkan ke Dashboard Kader
       Navigator.pushReplacementNamed(context, '/home_kader');
     } catch (e) {
-      // 🔥 Pastikan layar masih ada sebelum memunculkan snackbar error
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -86,10 +79,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
         ),
       );
     } finally {
-      // Pastikan state loading dimatikan, apapun hasil dari try-catch
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -114,7 +104,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔥 ILUSTRASI ICON
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -128,8 +117,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // 🔥 HEADER TEKS
               const Text("Verifikasi Kode", style: AppTextStyle.heading1),
               const SizedBox(height: 8),
               const Text(
@@ -137,21 +124,15 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                 style: AppTextStyle.bodyText,
               ),
               const SizedBox(height: 40),
-
-              // 🔥 INPUT KODE
               const Text("Kode Akses", style: AppTextStyle.inputLabel),
               const SizedBox(height: 8),
               CustomTextField(
                 controller: codeController,
-                hintText: "Contoh: KADER-SIAGA-2026",
+                hintText: "Contoh: KADER-SIAGA",
                 prefixIcon: Icons.vpn_key_outlined,
-                // Menambahkan kapitalisasi otomatis pada keyboard
                 textCapitalization: TextCapitalization.characters,
               ),
-
               const SizedBox(height: 40),
-
-              // 🔥 TOMBOL VERIFIKASI
               CustomButton(
                 text: "Verifikasi Sekarang",
                 onPressed: onVerifyPressed,

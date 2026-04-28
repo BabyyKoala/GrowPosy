@@ -4,357 +4,256 @@ import 'package:flutter/material.dart';
 import '../../theme/app_color.dart';
 import '../../theme/app_text_style.dart';
 
-// 🔥 PERBAIKAN 1: Import layar detail artikel agar bisa diakses
-// Pastikan path import ini sesuai dengan struktur foldermu.
-// Jika kedua file ini berada dalam satu folder, cukup gunakan:
-// import 'article_detail_screen.dart';
+// 🔥 Import Layar Detail Artikel
 import 'article_detail_screen.dart';
 
-class EdukasiScreen extends StatefulWidget {
+class EdukasiScreen extends StatelessWidget {
   const EdukasiScreen({super.key});
 
-  @override
-  State<EdukasiScreen> createState() => _EdukasiScreenState();
-}
-
-class _EdukasiScreenState extends State<EdukasiScreen> {
-  String selectedCategory = 'Semua';
-  String searchQuery = '';
-
-  // 🔥 Mock Data (Data Dummy) Artikel
-  // Menambahkan field 'content' agar setiap artikel punya isi yang berbeda
-  final List<Map<String, dynamic>> articles = [
+  // ==========================================
+  // 📚 DATABASE ARTIKEL EDUKASI LENGKAP
+  // ==========================================
+  final List<Map<String, dynamic>> listArtikel = const [
     {
-      'title': 'Menu MPASI Sehat 6-9 Bulan Tanpa Ribet',
-      'category': 'Nutrisi',
-      'time': '5 min read',
-      'icon': Icons.restaurant,
-      'color': Colors.orange,
-      'content':
-          'Memasuki usia 6 bulan, kebutuhan gizi bayi mulai meningkat dan ASI saja tidak lagi cukup. Memulai MPASI (Makanan Pendamping ASI) adalah langkah penting.\n\nKunci utamanya adalah memberikan makanan yang kaya akan zat besi dan mudah dicerna. Contoh menu tanpa ribet: Bubur halus hati ayam dengan tambahan sedikit margarin/minyak kelapa, atau pure kentang campur daging sapi giling halus.\n\nPastikan tekstur makanan disesuaikan dengan kemampuan mengunyah bayi Anda. Mulailah dengan tekstur lumat (puree) dan perlahan naik ke tekstur cincang halus.',
+      "title": "Pencegahan Stunting Sejak 1000 Hari Pertama Kehidupan (HPK)",
+      "category": "Gizi & Nutrisi",
+      "time": "5 Min Read",
+      "icon": Icons.restaurant_menu_rounded,
+      "color": Colors.orange,
+      "content":
+          "Stunting adalah kondisi gagal tumbuh pada anak balita (bayi di bawah 5 tahun) akibat dari kekurangan gizi kronis sehingga anak terlalu pendek untuk usianya. Kekurangan gizi ini terjadi sejak bayi dalam kandungan pada masa awal setelah bayi lahir.\n\n"
+          "Masa 1000 Hari Pertama Kehidupan (HPK) terdiri dari 270 hari masa kehamilan dan 730 hari pada 2 tahun pertama kehidupan bayi. Masa ini adalah periode emas atau 'window of opportunity' yang sangat krusial.\n\n"
+          "Cara mencegah stunting di periode ini meliputi:\n"
+          "1. Ibu hamil mengonsumsi makanan bergizi dan rutin meminum Tablet Tambah Darah (TTD).\n"
+          "2. Memberikan Inisiasi Menyusu Dini (IMD) saat bayi baru lahir.\n"
+          "3. Memberikan ASI Eksklusif selama 6 bulan penuh tanpa tambahan air putih atau makanan lain.\n"
+          "4. Mulai memberikan Makanan Pendamping ASI (MPASI) yang kaya protein hewani sejak usia 6 bulan, sembari terus memberikan ASI hingga 2 tahun.\n\n"
+          "Rutin membawa anak ke Posyandu setiap bulan juga sangat penting untuk memantau kurva pertumbuhan tinggi dan berat badan anak, sehingga risiko stunting dapat dideteksi sejak dini.",
+      "source":
+          "1. Kementerian Kesehatan Republik Indonesia. (2022). 'Buku Kesehatan Ibu dan Anak (KIA)'. Jakarta.\n"
+          "2. World Health Organization (WHO). 'Stunting in a Nutshell'.\n"
+          "3. Peraturan Presiden Republik Indonesia Nomor 72 Tahun 2021 tentang Percepatan Penurunan Stunting.",
     },
     {
-      'title': 'Jadwal Imunisasi Dasar Lengkap Kemenkes',
-      'category': 'Kesehatan',
-      'time': '4 min read',
-      'icon': Icons.vaccines,
-      'color': Colors.blue,
-      'content':
-          'Imunisasi adalah perlindungan terbaik agar balita terhindar dari penyakit berbahaya. Berikut adalah jadwal standar imunisasi dasar menurut Kementerian Kesehatan RI:\n\n- Umur 0 bulan: Hepatitis B0\n- Umur 1 bulan: BCG, Polio 1\n- Umur 2 bulan: DPT-HB-Hib 1, Polio 2, Rotavirus\n- Umur 3 bulan: DPT-HB-Hib 2, Polio 3, Rotavirus\n- Umur 4 bulan: DPT-HB-Hib 3, Polio 4, IPV\n- Umur 9 bulan: Campak/MR\n\nBawalah anak ke Posyandu atau Puskesmas secara rutin agar tidak tertinggal jadwal imunisasinya.',
+      "title": "Jadwal Imunisasi Dasar Lengkap Kemenkes RI 2024",
+      "category": "Vaksinasi",
+      "time": "4 Min Read",
+      "icon": Icons.vaccines_rounded,
+      "color": Colors.blue,
+      "content":
+          "Imunisasi adalah proses untuk membuat sistem kekebalan tubuh balita menjadi kuat terhadap suatu penyakit infeksi yang berbahaya. Kelalaian dalam memberikan imunisasi dapat menyebabkan balita rentan terhadap cacat permanen bahkan kematian akibat wabah.\n\n"
+          "Berikut adalah jadwal imunisasi dasar lengkap yang diwajibkan oleh Pemerintah:\n\n"
+          "• Usia 0 Bulan: Hepatitis B0 (diberikan kurang dari 24 jam setelah lahir).\n"
+          "• Usia 1 Bulan: BCG (mencegah Tuberkulosis) dan Polio 1.\n"
+          "• Usia 2 Bulan: DPT-HB-Hib 1 (mencegah Difteri, Pertusis, Tetanus) dan Polio 2.\n"
+          "• Usia 3 Bulan: DPT-HB-Hib 2 dan Polio 3.\n"
+          "• Usia 4 Bulan: DPT-HB-Hib 3, Polio 4, dan IPV (Polio suntik).\n"
+          "• Usia 9 Bulan: Campak / Rubella (MR).\n\n"
+          "Apabila anak terlambat menerima salah satu imunisasi, Ibu tidak perlu mengulang dari awal. Segera bawa anak ke fasilitas kesehatan terdekat untuk melakukan 'Imunisasi Kejar' (Catch-up Immunization). Reaksi demam ringan setelah imunisasi adalah hal yang wajar sebagai tanda antibodi tubuh sedang bekerja.",
+      "source":
+          "1. Ikatan Dokter Anak Indonesia (IDAI). (2023). 'Jadwal Imunisasi Anak Umur 0-18 Tahun'. Jakarta.\n"
+          "2. Peraturan Menteri Kesehatan RI Nomor 12 Tahun 2017 tentang Penyelenggaraan Imunisasi.",
     },
     {
-      'title': 'Tips Menstimulasi Motorik Kasar Bayi',
-      'category': 'Perkembangan',
-      'time': '6 min read',
-      'icon': Icons.toys,
-      'color': Colors.purple,
-      'content':
-          'Perkembangan motorik kasar mencakup kemampuan duduk, merangkak, berdiri, dan berjalan. Stimulasi yang tepat dari orang tua sangat dibutuhkan.\n\n1. Tummy Time: Lakukan sejak dini untuk memperkuat otot leher dan punggung bayi.\n2. Pancing dengan Mainan: Letakkan mainan favorit sedikit di luar jangkauan untuk merangsang bayi merangkak maju.\n3. Pegangan yang Aman: Sediakan area yang aman bagi bayi untuk belajar merambat atau berdiri berpegangan pada furnitur.\n\nSetiap anak berkembang dengan kecepatan berbeda, jadi jangan memaksakan jika bayi belum siap.',
+      "title": "Panduan MPASI yang Benar untuk Bayi Usia 6-12 Bulan",
+      "category": "Tumbuh Kembang",
+      "time": "6 Min Read",
+      "icon": Icons.child_care_rounded,
+      "color": AppColor.primaryGreen,
+      "content":
+          "Makanan Pendamping ASI (MPASI) mulai diberikan saat bayi berusia tepat 6 bulan. Pada usia ini, ASI saja sudah tidak lagi mencukupi kebutuhan kalori dan zat besi harian bayi yang semakin besar.\n\n"
+          "Kunci sukses pemberian MPASI terletak pada 4 strategi:\n\n"
+          "1. Tepat Waktu: Diberikan saat ASI saja sudah tidak cukup (usia 6 bulan).\n"
+          "2. Cukup Kandungan Gizi (Adekuat): MPASI harus mengandung makronutrien dan mikronutrien, khususnya Protein Hewani (daging sapi, ati ayam, telur, ikan) dan Zat Besi untuk mencegah anemia.\n"
+          "3. Aman dan Higienis: Alat masak harus bersih, mencuci tangan sebelum menyuapi, dan memisahkan talenan mentah dan matang.\n"
+          "4. Diberikan dengan Cara yang Benar (Responsive Feeding): Ibu harus peka terhadap tanda lapar dan kenyang anak. Jangan memaksa anak menghabiskan makanan jika ia sudah memalingkan wajah atau menutup mulut.\n\n"
+          "Tekstur makanan harus dinaikkan secara bertahap. Usia 6-8 bulan menggunakan tekstur saring halus (puree/mashed), 9-11 bulan tekstur cincang kasar (minced/chopped) yang bisa dipegang anak (finger food), dan usia 12 bulan ke atas sudah bisa ikut makanan keluarga.",
+      "source":
+          "1. World Health Organization (WHO). (2023). 'Guiding principles for complementary feeding of the breastfed child'.\n"
+          "2. Ikatan Dokter Anak Indonesia (IDAI). (2018). 'Rekomendasi Praktik Pemberian Makan Berbasis Bukti pada Bayi dan Batita di Indonesia'.",
     },
     {
-      'title': 'Mendeteksi Gejala Awal Stunting pada Anak',
-      'category': 'Kesehatan',
-      'time': '7 min read',
-      'icon': Icons.warning_amber_rounded,
-      'color': AppColor.errorRed,
-      'content':
-          'Stunting bukan sekadar tubuh pendek, melainkan kondisi gagal tumbuh akibat kurang gizi kronis di 1000 Hari Pertama Kehidupan. Kondisi ini juga memengaruhi perkembangan kecerdasan otak anak.\n\nGejala Awal yang Perlu Diwaspadai:\n1. Pertumbuhan gigi terlambat.\n2. Performa atau memori belajar yang buruk saat masuk usia pra-sekolah.\n3. Anak menjadi lebih pendiam dan tidak banyak melakukan *eye contact* di usia 8-10 bulan.\n4. Pertumbuhan tinggi badan yang melambat (berada di bawah garis merah pada kurva KMS).\n\nJika menemui tanda tersebut, segera intervensi dengan memperbaiki nutrisi MPASI dan berkonsultasi ke ahlinya.',
-    },
-    {
-      'title': 'Resep Camilan Tinggi Kalori Penambah Berat Badan',
-      'category': 'Nutrisi',
-      'time': '4 min read',
-      'icon': Icons.ramen_dining,
-      'color': Colors.orange,
-      'content':
-          'Banyak ibu khawatir ketika berat badan si kecil susah naik. Solusinya bukan memberikan camilan manis berlebihan, tetapi camilan sehat padat kalori (Double Protein/Karbo).\n\nCoba resep ini: Perkedel Kentang Keju Telur Puyuh.\nKukus kentang hingga empuk, haluskan. Campur dengan telur puyuh rebus yang sudah dilumatkan, sedikit daging ayam cincang, dan parutan keju. Bentuk bulat-bulat lalu goreng dengan mentega.\n\nCamilan ini tidak hanya lezat, tetapi mengandung karbohidrat, protein hewani, dan lemak sehat yang efektif mendongkrak berat badan balita secara aman.',
+      "title": "Mengenali 'Red Flags' (Tanda Bahaya) Perkembangan Anak",
+      "category": "Psikologi & Motorik",
+      "time": "5 Min Read",
+      "icon": Icons.directions_run_rounded,
+      "color": Colors.purple,
+      "content":
+          "Setiap anak memang memiliki kecepatan tumbuh kembang yang berbeda-beda. Namun, ada batas waktu maksimal di mana seorang anak harus sudah bisa menguasai kemampuan tertentu. Batas ini disebut dengan 'Red Flags' atau tanda bahaya.\n\n"
+          "Orang tua perlu segera berkonsultasi dengan Dokter Spesialis Anak jika menemukan Red Flags berikut pada balitanya:\n\n"
+          "Motorik Kasar:\n"
+          "• Usia 4 Bulan: Belum bisa menegakkan kepala saat ditengkurapkan.\n"
+          "• Usia 9 Bulan: Belum bisa duduk sendiri tanpa pegangan.\n"
+          "• Usia 18 Bulan: Belum bisa berjalan sendiri.\n\n"
+          "Motorik Halus & Sosial:\n"
+          "• Usia 6 Bulan: Tidak ada senyum sosial, tidak merespons saat dipanggil namanya, atau tidak melakukan kontak mata.\n"
+          "• Usia 12 Bulan: Belum bisa menunjuk benda menggunakan telunjuk atau melambai (dadah).\n\n"
+          "Bahasa (Speech Delay):\n"
+          "• Usia 12 Bulan: Tidak ada babbling (mengoceh 'ba-ba-ba' / 'ma-ma-ma').\n"
+          "• Usia 16 Bulan: Belum ada satu kata pun yang bermakna.\n\n"
+          "Semakin cepat Red Flags dideteksi, semakin efektif intervensi (seperti fisioterapi atau terapi wicara) yang bisa dilakukan untuk mengejar ketertinggalan anak.",
+      "source":
+          "1. Centers for Disease Control and Prevention (CDC). (2022). 'Developmental Milestones'.\n"
+          "2. Ikatan Dokter Anak Indonesia (IDAI). 'Kapan Orangtua Harus Waspada Terhadap Keterlambatan Perkembangan Anak?'.",
     },
   ];
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 Logika Filter Berdasarkan Pencarian & Kategori
-    final filteredArticles = articles.where((article) {
-      final matchCategory =
-          selectedCategory == 'Semua' ||
-          article['category'] == selectedCategory;
-      final matchSearch = article['title'].toLowerCase().contains(
-        searchQuery.toLowerCase(),
-      );
-      return matchCategory && matchSearch;
-    }).toList();
-
     return Scaffold(
       backgroundColor: AppColor.bgWhite,
       appBar: AppBar(
         backgroundColor: AppColor.bgWhite,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColor.textBlack),
-          onPressed: () => Navigator.pop(context),
-        ),
+        centerTitle: true,
         title: const Text(
-          "Portal Edukasi",
+          "Pusat Edukasi",
           style: TextStyle(
             color: AppColor.textBlack,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
         ),
-        centerTitle: true,
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 🔥 HEADER & SEARCH BAR
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 10.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Temukan Artikel", style: AppTextStyle.heading1),
-                const SizedBox(height: 8),
-                const Text(
-                  "Pilih bacaan yang tepat untuk mendukung tumbuh kembang si kecil.",
-                  style: AppTextStyle.bodyText,
-                ),
-                const SizedBox(height: 20),
-
-                // Search Bar
-                TextField(
-                  onChanged: (value) => setState(() => searchQuery = value),
-                  decoration: InputDecoration(
-                    hintText: "Cari topik (mis. MPASI, Imunisasi)",
-                    hintStyle: const TextStyle(color: AppColor.textGrey),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: AppColor.textGrey,
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: const BorderSide(
-                        color: AppColor.primaryGreen,
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 🔥 KATEGORI CHIPS
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24.0,
-              vertical: 10.0,
-            ),
-            child: Row(
-              children: ['Semua', 'Nutrisi', 'Kesehatan', 'Perkembangan'].map((
-                category,
-              ) {
-                final isSelected = selectedCategory == category;
-                return GestureDetector(
-                  onTap: () => setState(() => selectedCategory = category),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppColor.primaryGreen : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isSelected
-                            ? AppColor.primaryGreen
-                            : AppColor.borderGrey,
-                      ),
-                    ),
-                    child: Text(
-                      category,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : AppColor.textBlack,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          // 🔥 DAFTAR ARTIKEL
-          Expanded(
-            child: filteredArticles.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0,
-                      vertical: 10.0,
-                    ),
-                    itemCount: filteredArticles.length,
-                    itemBuilder: (context, index) {
-                      final article = filteredArticles[index];
-                      return _buildArticleCard(
-                        context,
-                        article,
-                      ); // Melempar context
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==========================
-  // WIDGET COMPONENTS
-  // ==========================
-
-  Widget _buildArticleCard(BuildContext context, Map<String, dynamic> article) {
-    final Color color = article['color'];
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColor.borderGrey),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {
-            // 🔥 PERBAIKAN 2: Navigasi ke halaman baca artikel detail
-            // Mengirimkan data artikel spesifik ke ArticleDetailScreen
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ArticleDetailScreen(
-                  title: article['title'],
-                  category: article['category'],
-                  time: article['time'],
-                  content: article['content'],
-                  icon: article['icon'],
-                  color: article['color'],
-                ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 10, 24, 0),
+              child: Text(
+                "Artikel Kesehatan Anak",
+                style: AppTextStyle.heading1,
               ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(article['icon'], color: color, size: 32),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          article['category'],
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        article['title'],
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          height: 1.3,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.access_time_rounded,
-                            size: 14,
-                            color: AppColor.textGrey,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            article['time'],
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColor.textGrey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
-          ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 8, 24, 20),
+              child: Text(
+                "Informasi terpercaya untuk mendukung tumbuh kembang balita Anda.",
+                style: AppTextStyle.bodyText,
+              ),
+            ),
+
+            // 🔥 LIST ARTIKEL
+            Expanded(
+              child: ListView.builder(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                itemCount: listArtikel.length,
+                itemBuilder: (context, index) {
+                  final artikel = listArtikel[index];
+                  return _buildArticleCard(context, artikel);
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.search_off_rounded, size: 64, color: AppColor.borderGrey),
-          const SizedBox(height: 16),
-          const Text(
-            "Artikel tidak ditemukan.\nCoba kata kunci lain.",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColor.textGrey, height: 1.5),
+  // ==========================================
+  // 🎨 WIDGET KARTU ARTIKEL LIST
+  // ==========================================
+  Widget _buildArticleCard(BuildContext context, Map<String, dynamic> data) {
+    return GestureDetector(
+      onTap: () {
+        // 🔥 Navigasi ke Halaman Detail sambil membawa seluruh data lengkap
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ArticleDetailScreen(
+              title: data['title'],
+              category: data['category'],
+              time: data['time'],
+              icon: data['icon'],
+              color: data['color'],
+              content: data['content'],
+              source: data['source'], // Melempar referensi ke layar detail
+            ),
           ),
-        ],
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColor.borderGrey),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // KOTAK IKON
+            Container(
+              height: 80,
+              width: 80,
+              decoration: BoxDecoration(
+                color: (data['color'] as Color).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Center(
+                child: Icon(data['icon'], color: data['color'], size: 36),
+              ),
+            ),
+            const SizedBox(width: 16),
+
+            // TEKS KONTEN
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    data['category'].toString().toUpperCase(),
+                    style: TextStyle(
+                      color: data['color'],
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    data['title'],
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppColor.textBlack,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.access_time_rounded,
+                        size: 14,
+                        color: AppColor.textGrey,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        data['time'],
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColor.textGrey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
